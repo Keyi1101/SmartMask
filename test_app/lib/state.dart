@@ -9,7 +9,6 @@ class testNotificationScreen extends StatefulWidget {
   _FirstScreen createState() => _FirstScreen();
 }
 
-
 class _FirstScreen extends State<testNotificationScreen> {
 
   @override
@@ -28,122 +27,158 @@ class _FirstScreen extends State<testNotificationScreen> {
     print('Payload $payload ');
   }
 
-
   @override
   Widget build(BuildContext context) {
-
-    var stack=new Stack(
-        children:<Widget> [
-          new Positioned(
-              bottom:100.0,
-              right:10.0,
-              child:RouteButton()
+    return DefaultTabController(
+      length: 3,
+      child: Scaffold(
+        appBar: AppBar(
+          backgroundColor: Colors.white,
+          elevation: 0,
+          centerTitle: true,
+          title: Text(
+            "Data",
+            style: TextStyle(
+              fontSize: 30,
+              fontWeight: FontWeight.bold,
+              color: Color(0xff4B4B87),
+            ),
           ),
+        ),
+        body:
+        Padding(
+          padding: const EdgeInsets.all(20.0),
+          child: Column(
+            children: [
+              SizedBox(height: 10),
+              Container(
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(14),
+                  color: Color(0xff4B4B87).withOpacity(.2),
+                ),
+                child: TabBar(
+                  unselectedLabelColor: Color(0xff4B4B87),
+                  indicator: BoxDecoration(
+                      borderRadius: BorderRadius.circular(15),
+                      color: Color(0xff4B4B87)),
+                  tabs: [
+                    Tab(text: "Day",),
+                    Tab(text: "Weak",),
+                    Tab(text: "Month"),
+                  ],
+                ),
+              ),
+              SizedBox(height: 20),
+              Expanded(
+                child:
+                GridView.count(
+                  crossAxisCount: 2,
+                  mainAxisSpacing: 20,
+                  crossAxisSpacing: 20,
+                  children: [
+                    buildGridCard(
+                      title: "Heart Rate",
+                      color: Color(0xffff6968),
+                      lable1: '120 ',//need to read from aws
+                      lable2: 'bpm',
+                    ),
 
-          new Positioned(
-              bottom:10.0,
-              left:10.0,
-              child:RouteButtonToInterconnectedScreen()
-          ),
-
-          new Positioned(
-              bottom:80.0,
-              right:30.0,
-              child:new Text('Remaining Battery:')
-          ),
-
-          new Positioned(
-              top: 30.0,
-              left:30.0,
-              child:new Text('Movement status:',style: TextStyle(fontSize: 20.0))//indicate the extent of movement of user(eg.highly active, medium active,not so active,still)
-          ),
-
-          new Positioned(
-              top: 70.0,
-              left:30.0,
-              child:new Text('Your heart rate:',style: TextStyle(fontSize: 20.0))
-          ),
-
-          new Positioned(
-              top: 110.0,
-              left:30.0,
-              child:new Text('Your body temperature(predicted):',style: TextStyle(fontSize: 20.0))
-          ),
-
-          new Positioned(
-              top: 150.0,
-              left:30.0,
-              child:new Text('Your blood oxygen concentration:',style: TextStyle(fontSize: 20.0))
-          ),
-
-          new Positioned(
-              bottom: 160.0,
-              left:30.0,
-              child:new Text('We have our chart from grafana to be placed above',style: TextStyle(fontSize: 15.0))
-          ),
-
-          new Center(
-              child:Container(
-                  height: 300.0,
-                  child: new ListView(
-                      scrollDirection:Axis.horizontal,
-                      children:<Widget> [
-                        new Container(
-                          width:300.0,
-                          color:Colors.lightBlue,
-                        ),
-                        new Container(
-                          width:300.0,
-                          color:Colors.deepOrangeAccent,
-                        ),
-                        new Container(
-                          width:300.0,
-                          color:Colors.redAccent,
-                        ),
-                        new Container(
-                          width:300.0,
-                          color:Colors.greenAccent,
-                        ),
-                        new Container(
-                          width:300.0,
-                          color:Colors.amber,
-                        ),
-                        new Container(
-                          width:300.0,
-                          color:Colors.green,
-                        ),
-                        new Container(
-                          width:300.0,
-                          color:Colors.purple,
-                        ),
-                        new Container(
-                          width:300.0,
-                          color:Colors.black,
-                        ),
-                      ]
-                  )
+                    buildGridCard(
+                      title: "Temperature",
+                      color: Color(0xff7A54FF),
+                      lable1: ' 37 ',//need to read from aws
+                      lable2: 'degree',
+                    ),
+                    buildGridCard(
+                      title: "Movement status:",
+                      color: Color(0xffFF8F61),
+                      lable1: 'Run',// need to read from aws
+                      lable2: '',
+                    ),
+                    buildGridCard(
+                      title: "Blood Oxygen",
+                      color: Color(0xff2AC3FF),
+                      lable1: '',//read from aws
+                      lable2: '',
+                    ),
+                    buildGridCard(
+                      title: "Battery",
+                      color: Color(0xff8AC3FF),
+                      lable1: '100',
+                      lable2: '%',
+                    ),
+                  ],
+                ),
               )
+            ],
           ),
-
-
-        ]
+        ),
+        floatingActionButton: FloatingActionButton(
+          onPressed: () async{
+            await localNotificationManager.showNotification();
+          },
+          child: Icon(Icons.notifications),
+        ),
+      ),
     );
 
-    return Scaffold(
-      appBar:AppBar(title:Text("Your data")),
-      body:Center(
-        child: stack,
+  }
+
+  Widget buildGridCard({
+    String title,
+    String lable1,
+    String lable2,
+    Color color,
+  }) {
+    return Container(
+      decoration: BoxDecoration(
+        color: color,
+        borderRadius: BorderRadius.circular(16),
       ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () async{
-          await localNotificationManager.showNotification();
-        },
-        child: Icon(Icons.notifications),
+      child: Stack(
+        children: [
+          Container(
+            padding: EdgeInsets.all(13),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: TextStyle(
+                    fontSize: 17,
+                    fontWeight: FontWeight.w700,
+                    color: Colors.white60,
+                  ),
+                ),
+                SizedBox(height: 25),
+                Row(
+                  children: [
+                    Text(
+                      lable1,
+                      style: TextStyle(
+                        fontSize: 35,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white,
+                      ),
+                    ),
+                    Text(
+                      lable2,
+                      style: TextStyle(
+                        fontSize: 25,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white,
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }
 }
-
 //跳转的Button
 class RouteButton extends StatelessWidget {
   @override
@@ -152,7 +187,6 @@ class RouteButton extends StatelessWidget {
       onPressed:(){
         _navigateToSecondScreen(context);
       },
-      child: Text('change your preference'),
     );
   }
 
@@ -244,8 +278,6 @@ class InterconnectedScreen extends StatelessWidget{
 
   }
 }
-
-
 
 
 class RouteButtonToStressAnalysis extends StatelessWidget {
@@ -346,7 +378,6 @@ class HeartRateScreen extends StatelessWidget{
 
   }
 }
-
 
 
 class OverallScreen extends StatelessWidget{
