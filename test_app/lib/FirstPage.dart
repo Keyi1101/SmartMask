@@ -39,7 +39,7 @@ class _FirstScreen extends State<testNotificationScreen> {
               right:10.0,
               child:RouteButton()
           ),
-          
+
           new Positioned(
               bottom:10.0,
               left:10.0,
@@ -51,6 +51,7 @@ class _FirstScreen extends State<testNotificationScreen> {
               right:30.0,
               child:new Text('Remaining Battery:')
           ),
+
           new Positioned(
               top: 30.0,
               left:30.0,
@@ -82,49 +83,49 @@ class _FirstScreen extends State<testNotificationScreen> {
           ),
 
           new Center(
-            child:Container(
-                height: 300.0,
-                child: new ListView(
-                  scrollDirection:Axis.horizontal,
-                  children:<Widget> [
-                    new Container(
-                      width:300.0,
-                      color:Colors.lightBlue,
-                    ),
-                    new Container(
-                      width:300.0,
-                      color:Colors.deepOrangeAccent,
-                    ),
-                    new Container(
-                      width:300.0,
-                      color:Colors.redAccent,
-                    ),
-                    new Container(
-                      width:300.0,
-                      color:Colors.greenAccent,
-                    ),
-                    new Container(
-                      width:300.0,
-                      color:Colors.amber,
-                    ),
-                    new Container(
-                      width:300.0,
-                      color:Colors.green,
-                    ),
-                    new Container(
-                      width:300.0,
-                      color:Colors.purple,
-                    ),
-                    new Container(
-                      width:300.0,
-                      color:Colors.black,
-                    ),
-                  ]
-                )
-              ) 
+              child:Container(
+                  height: 300.0,
+                  child: new ListView(
+                      scrollDirection:Axis.horizontal,
+                      children:<Widget> [
+                        new Container(
+                          width:300.0,
+                          color:Colors.lightBlue,
+                        ),
+                        new Container(
+                          width:300.0,
+                          color:Colors.deepOrangeAccent,
+                        ),
+                        new Container(
+                          width:300.0,
+                          color:Colors.redAccent,
+                        ),
+                        new Container(
+                          width:300.0,
+                          color:Colors.greenAccent,
+                        ),
+                        new Container(
+                          width:300.0,
+                          color:Colors.amber,
+                        ),
+                        new Container(
+                          width:300.0,
+                          color:Colors.green,
+                        ),
+                        new Container(
+                          width:300.0,
+                          color:Colors.purple,
+                        ),
+                        new Container(
+                          width:300.0,
+                          color:Colors.black,
+                        ),
+                      ]
+                  )
+              )
           ),
-          
-          
+
+
         ]
     );
 
@@ -136,13 +137,13 @@ class _FirstScreen extends State<testNotificationScreen> {
       floatingActionButton: FloatingActionButton(
         onPressed: () async{
           await localNotificationManager.showNotification();
-          },
+        },
         child: Icon(Icons.notifications),
       ),
     );
   }
-} 
- 
+}
+
 //跳转的Button
 class RouteButton extends StatelessWidget {
   @override
@@ -155,7 +156,7 @@ class RouteButton extends StatelessWidget {
     );
   }
 
-  _navigateToSecondScreen(BuildContext context) async{ 
+  _navigateToSecondScreen(BuildContext context) async{
 
     final result = await Navigator.push(
         context,
@@ -221,20 +222,20 @@ class InterconnectedScreen extends StatelessWidget{
 
                 children: <Widget>[
                   Positioned(
-                    bottom:200.0,
-                    left:200.0,
-                    child:RouteButtonToStressAnalysis()
+                      bottom:200.0,
+                      left:200.0,
+                      child:RouteButtonToStressAnalysis()
                   ),
                   Positioned(
-                    bottom:250.0,
-                    left:200.0,
-                    child:RouteButtonToHeartRateAnalysis()
+                      bottom:250.0,
+                      left:200.0,
+                      child:RouteButtonToHeartRateAnalysis()
                   ),
 
                   Positioned(
-                    bottom:300.0,
-                    left:200.0,
-                    child:RouteButtonToOverallAnalysis()
+                      bottom:300.0,
+                      left:200.0,
+                      child:RouteButtonToOverallAnalysis()
                   ),
                 ]
             )
@@ -258,7 +259,7 @@ class RouteButtonToStressAnalysis extends StatelessWidget {
     );
   }
 
-  _navigateToStressAnalysis(BuildContext context) async{ 
+  _navigateToStressAnalysis(BuildContext context) async{
 
     final result = await Navigator.push(
         context,
@@ -280,7 +281,7 @@ class RouteButtonToHeartRateAnalysis extends StatelessWidget {
     );
   }
 
-  _navigateToHeartRateAnalysis(BuildContext context) async{ 
+  _navigateToHeartRateAnalysis(BuildContext context) async{
 
     final result = await Navigator.push(
         context,
@@ -302,7 +303,7 @@ class RouteButtonToOverallAnalysis extends StatelessWidget {
     );
   }
 
-  _navigateToOverallAnalysis(BuildContext context) async{ 
+  _navigateToOverallAnalysis(BuildContext context) async{
 
     final result = await Navigator.push(
         context,
@@ -376,7 +377,7 @@ class RouteButtonToInterconnectedScreen extends StatelessWidget {
     );
   }
 
-  _navigateToInterConnectedScreen(BuildContext context) async{ 
+  _navigateToInterConnectedScreen(BuildContext context) async{
 
     final result = await Navigator.push(
         context,
@@ -385,4 +386,3 @@ class RouteButtonToInterconnectedScreen extends StatelessWidget {
 
   }
 }
-
