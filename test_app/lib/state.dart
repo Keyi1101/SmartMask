@@ -30,7 +30,7 @@ class _FirstScreen extends State<testNotificationScreen> {
   @override
   Widget build(BuildContext context) {
     return DefaultTabController(
-      length: 3,
+      length: 2,
       child: Scaffold(
         appBar: AppBar(
           backgroundColor: Colors.white,
@@ -44,74 +44,136 @@ class _FirstScreen extends State<testNotificationScreen> {
               color: Color(0xff4B4B87),
             ),
           ),
-        ),
-        body:
-        Padding(
-          padding: const EdgeInsets.all(20.0),
-          child: Column(
-            children: [
-              SizedBox(height: 10),
-              Container(
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(14),
-                  color: Color(0xff4B4B87).withOpacity(.2),
-                ),
-                child: TabBar(
-                  unselectedLabelColor: Color(0xff4B4B87),
-                  indicator: BoxDecoration(
-                      borderRadius: BorderRadius.circular(15),
-                      color: Color(0xff4B4B87)),
-                  tabs: [
-                    Tab(text: "Day",),
-                    Tab(text: "Weak",),
-                    Tab(text: "Month"),
-                  ],
-                ),
-              ),
-              SizedBox(height: 20),
-              Expanded(
-                child:
-                GridView.count(
-                  crossAxisCount: 2,
-                  mainAxisSpacing: 20,
-                  crossAxisSpacing: 20,
-                  children: [
-                    buildGridCard(
-                      title: "Heart Rate",
-                      color: Color(0xffff6968),
-                      lable1: '120 ',//need to read from aws
-                      lable2: 'bpm',
-                    ),
-
-                    buildGridCard(
-                      title: "Temperature",
-                      color: Color(0xff7A54FF),
-                      lable1: ' 37 ',//need to read from aws
-                      lable2: 'degree',
-                    ),
-                    buildGridCard(
-                      title: "Movement status:",
-                      color: Color(0xffFF8F61),
-                      lable1: 'Run',// need to read from aws
-                      lable2: '',
-                    ),
-                    buildGridCard(
-                      title: "Blood Oxygen",
-                      color: Color(0xff2AC3FF),
-                      lable1: '',//read from aws
-                      lable2: '',
-                    ),
-                    buildGridCard(
-                      title: "Battery",
-                      color: Color(0xff8AC3FF),
-                      lable1: '100',
-                      lable2: '%',
-                    ),
-                  ],
-                ),
-              )
+          bottom:
+          TabBar(
+            indicatorColor: Colors.blue,
+            labelColor: Colors.black,
+            tabs:<Widget>
+            [
+              Tab(text: 'Real-Time'),
+              Tab(text: 'Past-Data',),
             ],
           ),
+        ),
+        body:
+        TabBarView(
+          children:[
+            Padding(
+              padding: const EdgeInsets.all(20.0),
+              child: Column(
+                children: [
+                  SizedBox(height: 10),
+                  Container(
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(14),
+                      color: Color(0xff4B4B87).withOpacity(.2),
+                    ),
+                  ),
+                  SizedBox(height: 20),
+                  Expanded(
+                    child:
+                    GridView.count(
+                      crossAxisCount: 2,
+                      mainAxisSpacing: 20,
+                      crossAxisSpacing: 20,
+                      children: [
+                        buildGridCard(
+                          title: "Heart Rate",
+                          color: Color(0xffff6968),
+                          lable1: '120 ',//need to read from aws
+                          lable2: 'bpm',
+                        ),
+
+                        buildGridCard(
+                          title: "Temperature",
+                          color: Color(0xff7A54FF),
+                          lable1: ' 37 ',//need to read from aws
+                          lable2: 'degree',
+                        ),
+                        buildGridCard(
+                          title: "Movement status:",
+                          color: Color(0xffFF8F61),
+                          lable1: 'Run',// need to read from aws
+                          lable2: '',
+                        ),
+                        buildGridCard(
+                          title: "Blood Oxygen",
+                          color: Color(0xff2AC3FF),
+                          lable1: '',//read from aws
+                          lable2: '',
+                        ),
+                        buildGridCard(
+                          title: "Battery",
+                          color: Colors.greenAccent,
+                          lable1: '100',
+                          lable2: '%',
+                        ),
+                        Container(
+
+                          child:RouteButton(),
+
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+
+            Padding(
+              padding: const EdgeInsets.all(20.0),
+              child: Column(
+                children: [
+                  SizedBox(height: 10),
+                  Container(
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(14),
+                      color: Color(0xff4B4B87).withOpacity(.2),
+                    ),
+                  ),
+                  SizedBox(height: 20),
+                  Expanded(
+                    child:
+                    GridView.count(
+                      crossAxisCount: 2,
+                      mainAxisSpacing: 20,
+                      crossAxisSpacing: 20,
+                      children: [
+                        Container(
+                          child:RouteButtonToHeartRateAnalysis(),
+                        ),
+
+                        Container(
+                          child:RouteButtonToStressAnalysis(),
+                        ),
+
+                        Container(
+                          child:RouteButtonToMovementHistory(),
+                        ),
+
+                        Container(
+                          child:RouteButtonToBodyTemp(),
+                        ),
+
+                        buildGridCard(
+                          title: "Battery",
+                          color: Colors.greenAccent,
+                          lable1: '100',
+                          lable2: '%',
+                        ),
+                        Container(
+
+                          child:RouteButton(),
+
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+
+          ],
         ),
         floatingActionButton: FloatingActionButton(
           onPressed: () async{
@@ -179,7 +241,7 @@ class _FirstScreen extends State<testNotificationScreen> {
     );
   }
 }
-//跳转的Button
+
 class RouteButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
@@ -187,6 +249,13 @@ class RouteButton extends StatelessWidget {
       onPressed:(){
         _navigateToSecondScreen(context);
       },
+      child: Text('Mode Choose',style: TextStyle(fontSize: 25,fontWeight: FontWeight.bold),),//text to be read from aws
+      style: ElevatedButton.styleFrom(
+        primary:Colors.black,
+        shape:RoundedRectangleBorder(
+          borderRadius:BorderRadius.circular(14),
+        ),
+      ),
     );
   }
 
@@ -227,7 +296,7 @@ class SecondScreen extends StatelessWidget{
                     },
                   ),
                   ElevatedButton(
-                    child:Text('Low update frequency',style: TextStyle(fontSize: 20.0)),
+                    child:Text('Low update frequency',style: TextStyle(fontSize: 20.0,)),
                     onPressed: (){
                       Navigator.pop(context,'Mode set to: Low update frequency');
                     },
@@ -242,42 +311,7 @@ class SecondScreen extends StatelessWidget{
 
 
 
-class InterconnectedScreen extends StatelessWidget{
-  @override
-  Widget build(BuildContext context){
 
-
-    return Scaffold(
-        appBar:AppBar(title:Text('choose the details you want...')),
-        body:Center(
-            child:
-            Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-
-                children: <Widget>[
-                  Positioned(
-                      bottom:200.0,
-                      left:200.0,
-                      child:RouteButtonToStressAnalysis()
-                  ),
-                  Positioned(
-                      bottom:250.0,
-                      left:200.0,
-                      child:RouteButtonToHeartRateAnalysis()
-                  ),
-
-                  Positioned(
-                      bottom:300.0,
-                      left:200.0,
-                      child:RouteButtonToOverallAnalysis()
-                  ),
-                ]
-            )
-        )
-    );
-
-  }
-}
 
 
 class RouteButtonToStressAnalysis extends StatelessWidget {
@@ -287,7 +321,13 @@ class RouteButtonToStressAnalysis extends StatelessWidget {
       onPressed:(){
         _navigateToStressAnalysis(context);
       },
-      child: Text('Stress Analysis',style: TextStyle(fontSize: 20.0)),
+      child: Text('Your Stress Analysis',style: TextStyle(fontSize: 20.0,fontWeight: FontWeight.bold)),
+      style: ElevatedButton.styleFrom(
+          primary: Color(0xFF7CB0E5),
+          shape:RoundedRectangleBorder(
+            borderRadius:BorderRadius.circular(14),
+          )
+      ),
     );
   }
 
@@ -309,7 +349,13 @@ class RouteButtonToHeartRateAnalysis extends StatelessWidget {
       onPressed:(){
         _navigateToHeartRateAnalysis(context);
       },
-      child: Text('Heart rate analysis',style: TextStyle(fontSize: 20.0)),
+      child: Text('Your Heart Rate Analysis',style: TextStyle(fontSize: 20.0,fontWeight: FontWeight.bold)),
+      style: ElevatedButton.styleFrom(
+        primary:Color(0xffff6968),
+        shape: RoundedRectangleBorder(
+            borderRadius:BorderRadius.circular(14),
+        )
+      ),
     );
   }
 
@@ -323,28 +369,60 @@ class RouteButtonToHeartRateAnalysis extends StatelessWidget {
   }
 }
 
-
-class RouteButtonToOverallAnalysis extends StatelessWidget {
+class RouteButtonToMovementHistory extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return ElevatedButton(
       onPressed:(){
-        _navigateToOverallAnalysis(context);
+        _navigateToMovementHistory(context);
       },
-      child: Text('Overall analysis',style: TextStyle(fontSize: 20.0)),
+      child: Text('Your Movement History',style: TextStyle(fontSize: 20.0,fontWeight: FontWeight.bold)),
+      style: ElevatedButton.styleFrom(
+        primary:Colors.indigoAccent,
+        shape:RoundedRectangleBorder(
+          borderRadius:BorderRadius.circular(14),
+        )
+      ),
     );
   }
 
-  _navigateToOverallAnalysis(BuildContext context) async{
+  _navigateToMovementHistory(BuildContext context) async{
 
     final result = await Navigator.push(
         context,
-        MaterialPageRoute(builder: (context)=> OverallScreen())
+        MaterialPageRoute(builder: (context)=> MovementScreen())
     );
 
   }
 }
 
+
+class RouteButtonToBodyTemp extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return ElevatedButton(
+      onPressed:(){
+        _navigateToBodyTemp(context);
+      },
+      child: Text('Your Body Temperature History',style: TextStyle(fontSize: 20.0,fontWeight: FontWeight.bold)),
+      style: ElevatedButton.styleFrom(
+        primary:Color(0xffFF8F61),
+        shape:RoundedRectangleBorder(
+          borderRadius:BorderRadius.circular(14),
+      )
+    ),
+    );
+  }
+
+  _navigateToBodyTemp(BuildContext context) async{
+
+    final result = await Navigator.push(
+        context,
+        MaterialPageRoute(builder: (context)=> BodyTempScreen())
+    );
+
+  }
+}
 
 class StressScreen extends StatelessWidget{
   @override
@@ -380,40 +458,34 @@ class HeartRateScreen extends StatelessWidget{
 }
 
 
-class OverallScreen extends StatelessWidget{
+
+class MovementScreen extends StatelessWidget{
   @override
   Widget build(BuildContext context){
 
 
     return Scaffold(
-        appBar:AppBar(title:Text('Your overall Analysis')),
+        appBar:AppBar(title:Text('Your Movement History')),
         body:Center(
             child:
-            Text('Chart of overall analysis is supposed to be placed here')
+            Text('Chart of movement history is supposed to be placed here')
         )
     );
-
   }
 }
 
 
-class RouteButtonToInterconnectedScreen extends StatelessWidget {
+class BodyTempScreen extends StatelessWidget{
   @override
-  Widget build(BuildContext context) {
-    return ElevatedButton(
-      onPressed:(){
-        _navigateToInterConnectedScreen(context);
-      },
-      child: Text('See more details'), //this allows the user to see enlarged pictures for more details
+  Widget build(BuildContext context){
+
+
+    return Scaffold(
+        appBar:AppBar(title:Text('Your Body Temperature History')),
+        body:Center(
+          child:
+          Text('Chart of body temp history is supposed to be placed here'),
+        )
     );
-  }
-
-  _navigateToInterConnectedScreen(BuildContext context) async{
-
-    final result = await Navigator.push(
-        context,
-        MaterialPageRoute(builder: (context)=> InterconnectedScreen())
-    );
-
   }
 }
