@@ -44,136 +44,136 @@ class _FirstScreen extends State<testNotificationScreen> {
               color: Color(0xff4B4B87),
             ),
           ),
-            bottom:
-              TabBar(
-                indicatorColor: Colors.blue,
-                labelColor: Colors.black,
-                tabs:<Widget> 
-                [
-                  Tab(text: 'Real-Time'),
-                  Tab(text: 'Past-Data',),
-                ],
-            ),
+          bottom:
+          TabBar(
+            indicatorColor: Colors.blue,
+            labelColor: Colors.black,
+            tabs:<Widget>
+            [
+              Tab(text: 'Real-Time'),
+              Tab(text: 'Past-Data',),
+            ],
+          ),
         ),
         body:
         TabBarView(
           children:[
-        Padding(
-          padding: const EdgeInsets.all(20.0),
-          child: Column(
-            children: [
-              SizedBox(height: 10),
-              Container(
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(14),
-                  color: Color(0xff4B4B87).withOpacity(.2),
-                ),
+            Padding(
+              padding: const EdgeInsets.all(20.0),
+              child: Column(
+                children: [
+                  SizedBox(height: 10),
+                  Container(
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(14),
+                      color: Color(0xff4B4B87).withOpacity(.2),
+                    ),
+                  ),
+                  SizedBox(height: 20),
+                  Expanded(
+                    child:
+                    GridView.count(
+                      crossAxisCount: 2,
+                      mainAxisSpacing: 20,
+                      crossAxisSpacing: 20,
+                      children: [
+                        buildGridCard(
+                          title: "Heart Rate",
+                          color: Color(0xffff6968),
+                          lable1: '120 ',//need to read from aws
+                          lable2: 'bpm',
+                        ),
+
+                        buildGridCard(
+                          title: "Temperature",
+                          color: Color(0xff7A54FF),
+                          lable1: ' 37 ',//need to read from aws
+                          lable2: 'degree',
+                        ),
+                        buildGridCard(
+                          title: "Movement status:",
+                          color: Color(0xffFF8F61),
+                          lable1: 'Run',// need to read from aws
+                          lable2: '',
+                        ),
+                        buildGridCard(
+                          title: "Blood Oxygen",
+                          color: Color(0xff2AC3FF),
+                          lable1: '',//read from aws
+                          lable2: '',
+                        ),
+                        buildGridCard(
+                          title: "Battery",
+                          color: Colors.greenAccent,
+                          lable1: '100',
+                          lable2: '%',
+                        ),
+                        Container(
+
+                          child:RouteButton(),
+
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
               ),
-              SizedBox(height: 20),
-              Expanded(
-                child:
-                GridView.count(
-                  crossAxisCount: 2,
-                  mainAxisSpacing: 20,
-                  crossAxisSpacing: 20,
-                  children: [
-                    buildGridCard(
-                      title: "Heart Rate",
-                      color: Color(0xffff6968),
-                      lable1: '120 ',//need to read from aws
-                      lable2: 'bpm',
-                    ),
+            ),
 
-                    buildGridCard(
-                      title: "Temperature",
-                      color: Color(0xff7A54FF),
-                      lable1: ' 37 ',//need to read from aws
-                      lable2: 'degree',
+            Padding(
+              padding: const EdgeInsets.all(20.0),
+              child: Column(
+                children: [
+                  SizedBox(height: 10),
+                  Container(
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(14),
+                      color: Color(0xff4B4B87).withOpacity(.2),
                     ),
-                    buildGridCard(
-                      title: "Movement status:",
-                      color: Color(0xffFF8F61),
-                      lable1: 'Run',// need to read from aws
-                      lable2: '',
+                  ),
+                  SizedBox(height: 20),
+                  Expanded(
+                    child:
+                    GridView.count(
+                      crossAxisCount: 2,
+                      mainAxisSpacing: 20,
+                      crossAxisSpacing: 20,
+                      children: [
+                        Container(
+                          child:RouteButtonToHeartRateAnalysis(),
+                        ),
+
+                        Container(
+                          child:RouteButtonToStressAnalysis(),
+                        ),
+
+                        Container(
+                          child:RouteButtonToMovementHistory(),
+                        ),
+
+                        Container(
+                          child:RouteButtonToBodyTemp(),
+                        ),
+
+                        buildGridCard(
+                          title: "Battery",
+                          color: Colors.greenAccent,
+                          lable1: '100',
+                          lable2: '%',
+                        ),
+                        Container(
+
+                          child:RouteButton(),
+
+                        ),
+                      ],
                     ),
-                    buildGridCard(
-                      title: "Blood Oxygen",
-                      color: Color(0xff2AC3FF),
-                      lable1: '',//read from aws
-                      lable2: '',
-                    ),
-                    buildGridCard(
-                      title: "Battery",
-                      color: Colors.greenAccent,
-                      lable1: '100',
-                      lable2: '%',
-                    ),
-                    Container(
-                      
-                      child:RouteButton(),
-                      
-                    ),
-                  ],
-                ),
+                  ),
+                ],
               ),
-            ],
-          ),
-        ),
+            ),
 
-        Padding(
-          padding: const EdgeInsets.all(20.0),
-          child: Column(
-            children: [
-              SizedBox(height: 10),
-              Container(
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(14),
-                  color: Color(0xff4B4B87).withOpacity(.2),
-                ),
-              ),
-              SizedBox(height: 20),
-              Expanded(
-                child:
-                GridView.count(
-                  crossAxisCount: 2,
-                  mainAxisSpacing: 20,
-                  crossAxisSpacing: 20,
-                  children: [
-                    Container(
-                      child:RouteButtonToHeartRateAnalysis(),
-                    ),
-
-                    Container(
-                      child:RouteButtonToStressAnalysis(),
-                    ),
-                    
-                    Container(
-                      child:RouteButtonToMovementHistory(),
-                    ),
-
-                    Container(
-                      child:RouteButtonToBodyTemp(),
-                    ),
-                    
-                    buildGridCard(
-                      title: "Battery",
-                      color: Colors.greenAccent,
-                      lable1: '100',
-                      lable2: '%',
-                    ),
-                    Container(
-                      
-                      child:RouteButton(),
-                      
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-        ),
-
-        ],
+          ],
         ),
         floatingActionButton: FloatingActionButton(
           onPressed: () async{
@@ -249,10 +249,13 @@ class RouteButton extends StatelessWidget {
       onPressed:(){
         _navigateToSecondScreen(context);
       },
-      child: Text('Fast Update',style: TextStyle(fontSize: 25),),//text to be read from aws
+      child: Text('Mode Choose',style: TextStyle(fontSize: 25,fontWeight: FontWeight.bold),),//text to be read from aws
       style: ElevatedButton.styleFrom(
-            primary:Colors.black, 
-          ),
+        primary:Colors.black,
+        shape:RoundedRectangleBorder(
+          borderRadius:BorderRadius.circular(14),
+        ),
+      ),
     );
   }
 
@@ -276,27 +279,42 @@ class SecondScreen extends StatelessWidget{
         appBar:AppBar(title:Text('change strategy of detection')),
         body:Center(
             child:
-            Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-
+            Row(
                 children: <Widget>[
-                  ElevatedButton(
-                    child:Text('High update frequency',style: TextStyle(fontSize: 20.0)),
+                  Container(
+                    height: 810.0,
+                    width: 196.0,
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(14),
+                      color: Color(0xff4B4B87).withOpacity(.2),
+                    ),
+                    child:ElevatedButton(
+                    child:Text('Fast',style: TextStyle(fontSize: 20.0)),
+                    style: ElevatedButton.styleFrom(
+                    primary:Colors.deepOrangeAccent,
+                  ),
                     onPressed: (){
                       Navigator.pop(context,'Mode set to: High update frequency');
                     },
                   ),
-                  ElevatedButton(
-                    child:Text('Medium update frequency',style: TextStyle(fontSize: 20.0)),
+                  ),
+
+                  Container(
+                    height: 810.0,
+                    width: 196.0,
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(14),
+                      color: Color(0xff4B4B87).withOpacity(.2),
+                    ),
+                    child:ElevatedButton(
+                    child:Text('Slow',style: TextStyle(fontSize: 20.0)),
+                    style: ElevatedButton.styleFrom(
+                    primary:Colors.lightBlueAccent,
+                  ),
                     onPressed: (){
-                      Navigator.pop(context,'Mode set to: Medium update frequency');
+                      Navigator.pop(context,'Mode set to: Slow update frequency');
                     },
                   ),
-                  ElevatedButton(
-                    child:Text('Low update frequency',style: TextStyle(fontSize: 20.0)),
-                    onPressed: (){
-                      Navigator.pop(context,'Mode set to: Low update frequency');
-                    },
                   )
                 ]
             )
@@ -318,7 +336,13 @@ class RouteButtonToStressAnalysis extends StatelessWidget {
       onPressed:(){
         _navigateToStressAnalysis(context);
       },
-      child: Text('Your Stress Analysis',style: TextStyle(fontSize: 20.0)),
+      child: Text('Your Stress Analysis',style: TextStyle(fontSize: 20.0,fontWeight: FontWeight.bold)),
+      style: ElevatedButton.styleFrom(
+          primary: Color(0xFF7CB0E5),
+          shape:RoundedRectangleBorder(
+            borderRadius:BorderRadius.circular(14),
+          )
+      ),
     );
   }
 
@@ -337,14 +361,16 @@ class RouteButtonToHeartRateAnalysis extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return ElevatedButton(
-      
       onPressed:(){
         _navigateToHeartRateAnalysis(context);
       },
-      child: Text('Your Heart Rate Analysis',style: TextStyle(fontSize: 20.0)),
+      child: Text('Your Heart Rate Analysis',style: TextStyle(fontSize: 20.0,fontWeight: FontWeight.bold)),
       style: ElevatedButton.styleFrom(
-            primary:Colors.pinkAccent, 
-          ),
+        primary:Color(0xffff6968),
+        shape: RoundedRectangleBorder(
+            borderRadius:BorderRadius.circular(14),
+        )
+      ),
     );
   }
 
@@ -358,10 +384,6 @@ class RouteButtonToHeartRateAnalysis extends StatelessWidget {
   }
 }
 
-
-
-
-
 class RouteButtonToMovementHistory extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
@@ -369,10 +391,13 @@ class RouteButtonToMovementHistory extends StatelessWidget {
       onPressed:(){
         _navigateToMovementHistory(context);
       },
-      child: Text('Your Movement History',style: TextStyle(fontSize: 20.0)),
+      child: Text('Your Movement History',style: TextStyle(fontSize: 20.0,fontWeight: FontWeight.bold)),
       style: ElevatedButton.styleFrom(
-            primary:Colors.indigoAccent, 
-          ),
+        primary:Colors.indigoAccent,
+        shape:RoundedRectangleBorder(
+          borderRadius:BorderRadius.circular(14),
+        )
+      ),
     );
   }
 
@@ -394,10 +419,13 @@ class RouteButtonToBodyTemp extends StatelessWidget {
       onPressed:(){
         _navigateToBodyTemp(context);
       },
-      child: Text('Your Body Temperature History',style: TextStyle(fontSize: 20.0)),
+      child: Text('Your Body Temperature History',style: TextStyle(fontSize: 20.0,fontWeight: FontWeight.bold)),
       style: ElevatedButton.styleFrom(
-            primary:Colors.deepOrange, 
-          ),
+        primary:Color(0xffFF8F61),
+        shape:RoundedRectangleBorder(
+          borderRadius:BorderRadius.circular(14),
+      )
+    ),
     );
   }
 
@@ -470,8 +498,8 @@ class BodyTempScreen extends StatelessWidget{
     return Scaffold(
         appBar:AppBar(title:Text('Your Body Temperature History')),
         body:Center(
-            child:
-            Text('Chart of body temp history is supposed to be placed here'),
+          child:
+          Text('Chart of body temp history is supposed to be placed here'),
         )
     );
   }
