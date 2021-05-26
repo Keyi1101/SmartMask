@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:test_app/model/product.dart';
 import 'LocalNotificationManager.dart';
-import 'package:http/http.dart';
 import 'model/create_item.dart';
 import 'model/get_list.dart';
 
@@ -29,8 +29,11 @@ class _FirstScreen extends State<testNotificationScreen> {
     print('Payload $payload ');
   }
 
+
+
   @override
   Widget build(BuildContext context) {
+
     return DefaultTabController(
       length: 2,
       child: Scaffold(
@@ -86,14 +89,18 @@ class _FirstScreen extends State<testNotificationScreen> {
 
                         Container(
                           child: Column(children: [
-                            Text('                 ',style:TextStyle(fontSize: 12.0)),
-                            Text('Heartrate               ', style: TextStyle(fontSize: 18.0,fontWeight: FontWeight.bold,color: Colors.white,),),
-                            Text('          ',style:TextStyle(fontSize: 25.0)),
+                            Text('                 ',
+                                style:TextStyle(fontSize: 12.0)),
+                            Text('Heartrate               ',
+                                style: TextStyle(fontSize: 18.0,fontWeight: FontWeight.bold,color: Colors.white,),),
+                            Text('          ',
+                                style:TextStyle(fontSize: 25.0)),
                             FutureBuilder(
                               future: getProducts(),
-                              builder: (BuildContext context,
-                                AsyncSnapshot snapshot) {
-                                return Text("    "+snapshot.data[snapshot.data.length-1].heartrate + " bpm",style: TextStyle(fontSize: 30.0,fontWeight: FontWeight.bold,color: Colors.white,),); //update real heartrate
+                              builder: (BuildContext context, AsyncSnapshot snapshot) {
+                                return Text("    "+
+                                    snapshot.data[snapshot.data.length-1].heartrate + " bpm",
+                                  style: TextStyle(fontSize: 30.0,fontWeight: FontWeight.bold,color: Colors.white,),); //update real heartrate
                               })
                             ]
                           ),
@@ -112,14 +119,18 @@ class _FirstScreen extends State<testNotificationScreen> {
 
                         Container(
                           child: Column(children: [
-                            Text('                 ',style:TextStyle(fontSize: 12.0)),
-                            Text('Temperature          ', style: TextStyle(fontSize: 18.0,fontWeight: FontWeight.bold,color: Colors.white,),),
-                            Text('          ',style:TextStyle(fontSize: 25.0)),
+                            Text('                 ',
+                                style:TextStyle(fontSize: 12.0)),
+                            Text('Temperature          ',
+                                style: TextStyle(fontSize: 18.0,fontWeight: FontWeight.bold,color: Colors.white,),),
+                            Text('          ',
+                                style:TextStyle(fontSize: 25.0)),
                             FutureBuilder(
                               future: getProducts(),
                               builder: (BuildContext context,
                                 AsyncSnapshot snapshot) {
-                                return Text("  "+snapshot.data[snapshot.data.length-1].temperature + " degree",style: TextStyle(fontSize: 30.0,fontWeight: FontWeight.bold,color: Colors.white,),); //update real heartrate
+                                return Text("  "+snapshot.data[snapshot.data.length-1].temperature + " degree",
+                                  style: TextStyle(fontSize: 30.0,fontWeight: FontWeight.bold,color: Colors.white,),); //update real heartrate
                               })
                             ]
                           ),
@@ -138,14 +149,18 @@ class _FirstScreen extends State<testNotificationScreen> {
 
                         Container(
                           child: Column(children: [
-                            Text('                 ',style:TextStyle(fontSize: 12.0)),
-                            Text('Movement status ', style: TextStyle(fontSize: 18.0,fontWeight: FontWeight.bold,color: Colors.white,),),
-                            Text('          ',style:TextStyle(fontSize: 25.0)),
+                            Text('                 ',
+                                style:TextStyle(fontSize: 12.0)),
+                            Text('Movement status ',
+                                style: TextStyle(fontSize: 18.0,fontWeight: FontWeight.bold,color: Colors.white,),),
+                            Text('          ',
+                                style:TextStyle(fontSize: 25.0)),
                             FutureBuilder(
                               future: getProducts(),
                               builder: (BuildContext context,
                                 AsyncSnapshot snapshot) {
-                                return Text("  "+snapshot.data[snapshot.data.length-1].movement + "",style: TextStyle(fontSize: 40.0,fontWeight: FontWeight.bold,color: Colors.white,),); //update real heartrate
+                                return Text("  "+snapshot.data[snapshot.data.length-1].movement + "",
+                                  style: TextStyle(fontSize: 40.0,fontWeight: FontWeight.bold,color: Colors.white,),); //update real heartrate
                               })
                             ]
                           ),
@@ -164,14 +179,18 @@ class _FirstScreen extends State<testNotificationScreen> {
 
                         Container(
                           child: Column(children: [
-                            Text('                 ',style:TextStyle(fontSize: 12.0)),
-                            Text('Blood oxygen conc.', style: TextStyle(fontSize: 18.0,fontWeight: FontWeight.bold,color: Colors.white,),),
-                            Text('          ',style:TextStyle(fontSize: 25.0)),
+                            Text('                 ',
+                                style:TextStyle(fontSize: 12.0)),
+                            Text('Blood Oxygen Conc.',
+                                style: TextStyle(fontSize: 18.0,fontWeight: FontWeight.bold,color: Colors.white,),),
+                            Text('          ',
+                                style:TextStyle(fontSize: 25.0)),
                             FutureBuilder(
                               future: getProducts(),
                               builder: (BuildContext context,
                                 AsyncSnapshot snapshot) {
-                                return Text("    "+snapshot.data[snapshot.data.length-1].oxygenconc + "",style: TextStyle(fontSize: 35.0,fontWeight: FontWeight.bold,color: Colors.white,),); //update real heartrate
+                                return Text("    "+snapshot.data[snapshot.data.length-1].oxygenconc + "",
+                                  style: TextStyle(fontSize: 35.0,fontWeight: FontWeight.bold,color: Colors.white,),); //update real heartrate
                               })
                             ]
                           ),

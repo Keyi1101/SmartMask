@@ -9,7 +9,7 @@ module.exports.create = (event, context, callback) => {
   const timestamp = new Date().getTime();
   const data = JSON.parse(event.body);
   
-  if (typeof data.name !== 'string') {
+  if (typeof data.movement !== 'string') {
     console.error('Validation Failed');
     callback(null, {
       statusCode: 400,
@@ -23,10 +23,10 @@ module.exports.create = (event, context, callback) => {
     TableName: "test",
     Item: {
       ID: uuid.v1(),
-      name: data.name,
-      description: data.description,
-      price: data.price,
-    
+      heartrate: data.heartrate,
+      temperature: data.temperature,
+      movement: data.movement,
+      oxygenconc: data.oxygenconc  
     },
   };
   // write the todo to the database
