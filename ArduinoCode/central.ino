@@ -63,6 +63,8 @@ float beatsPerMinute;
 int beatAvg;
 bool No_spoi=0;//1 to disable spoi algorithmn to speed up 
 
+#define MMA8452Q_Addr 0x1C
+
 
 #define MAX_NAME_LENGTH 20
 char NAME_OF_MASK[MAX_NAME_LENGTH]="Smart Mask";
@@ -74,7 +76,8 @@ char NAME_OF_MASK[MAX_NAME_LENGTH]="Smart Mask";
 #define IN_DEBUGING 1 //1 to prevent the seeduino from sleeping
 
 
-#define Data_Set_Length_Max 2000
+
+#define Data_Set_Length_Max 1000
 #if defined(__AVR_ATmega328P__) || defined(__AVR_ATmega168__)
 //Arduino Uno doesn't have enough SRAM to store 100 samples of IR led data and red led data in 32-bit format
 //To solve this problem, 16-bit MSB of the sampled data will be truncated. Samples become 16-bit data.
@@ -86,11 +89,26 @@ uint32_t irBuffer[100]; //infrared LED sensor data
 uint32_t redBuffer[100];  //red LED sensor data
 #endif
 
+#define HDC1080_ADDR          0x40 //7-bit I2C Address
+#define HDC1080_CFG_REG       0x02 //config mode
+#define HDC1080_TEMP_REG      0x00 //read tempurature
+#define HDC1080_HUMI_REG      0x01 //read humidity
+
+
+#define HDC1080_RST 0x8000
+#define HDC1080_HEAT 0x2000
+#define HDC1080_TEMP_HUM 0x1000
+#define HDC1080_LOW_TRES 0x0400
+#define HDC1080_LOW_HRES 0x0200
+#define HDC1080_MID_HRES 0x0100
+
 uint32_t irCurrent;
 uint32_t redCurrent;
 uint8_t spoiRead=0;
 uint8_t spoiPTR=0;
 
+uint8_t Mask_Mode=1; //mormal 1//measurement only
+bool PPG_List_Sent=1;
 
 int32_t bufferLength; //data length
 int32_t spo2; //SPO2 value
@@ -101,8 +119,18 @@ int8_t validHeartRate; //indicator to show if the heart rate calculation is vali
 float signalRatio;
 float signalCorel;
 
+  byte ledBrightness = 60; //Options: 0=Off to 255=50mA
+  byte sampleAverage = 2; //Options: 1, 2, 4, 8, 16, 32
+  byte ledMode = 2; //Options: 1 = Red only, 2 = Red + IR, 3 = Red + IR + Green
+  byte sampleRate = 400; //Options: 50, 100, 200, 400, 800, 1000, 1600, 3200
+  int pulseWidth = 411; //Options: 69, 118, 215, 411
+  int adcRange = 4096; //Options: 2048, 4096, 8192, 16384
+
 byte pulseLED = 9; //Must be on PWM pin
 byte readLED = 10; //Blinks with each data read
+
+bool Stress_Measured = 0;
+uint16_t Stress_Refresh_Count=3599;
 
 uint8_t NextSecond=0; //the alarm will take place when time change to the next second.
 
@@ -111,26 +139,36 @@ struct Data_Set{
   uint32_t Second_Stamp_S;
   uint8_t Heart_Rate_S;
   uint8_t SPO2_S;
+  uint8_t MOTION_LEVEL_S; 
 
   
 };
 
 
 struct PPG_Set{
-uint32_t Milli_Stamp;
-uint32_t PPG_Red;
+//uint32_t Milli_Stamp;
+//uint32_t PPG_Red;
 uint32_t PPG_IR;
+
 };
 uint16_t BLE_Data_Read_RC=0;
 uint16_t BLE_Data_Write_RC=0;
 
-#define PPG_List_Length 2000
+#define PPG_List_Length 1992
 struct PPG_List{
  uint32_t Second_Stamp; //start
  PPG_Set PPG_Sig[PPG_List_Length];
 };
 bool BLE_LAST_STAT=0;
 Data_Set Normal_Mode_Data[Data_Set_Length_Max];
+PPG_List  PPG_List_Ins;
+
+
+uint16_t BT_SLEEP_COUNT=0;
+uint16_t BT_SLEEP_SECOND=90;
+
+bool TEMP_COUNT_NORM=1;
+uint8_t TEMP_COUNT=9;
 
 datetime My_Time;
 RTCZero rtc;
@@ -139,9 +177,89 @@ EnergySaving nrgSave;
 bool isLEDOn = false;
 bool Mask_On = false; //detect whether the user is wearing the mask
 
+
+uint16_t ACCEL[7];
+int8_t ACCEL_X_LIST[PPG_List_Length/4];
+int8_t ACCEL_Y_LIST[PPG_List_Length/4];
+int8_t ACCEL_Z_LIST[PPG_List_Length/4];
+
+uint16_t TEMP_A[PPG_List_Length/12];
+
+uint16_t TEMP_B[PPG_List_Length/12];
+
+uint16_t TEMP_C[PPG_List_Length/12];
+
+uint16_t HDC1080_VAL;
+
+
+
 void setup()
-{
+{ 
    pinMode(13, OUTPUT); 
+    digitalWrite(3, 1);
+   Wire.begin();
+   Wire.setClock(400000);
+
+   //################################Accelerometer config##############################################
+   // Start I2C Transmission
+  Wire.beginTransmission(MMA8452Q_Addr);
+  // Select control register
+  Wire.write(0x2A);
+  // StandBy mode
+  Wire.write(0x00);
+  // Stop I2C Transmission
+  Wire.endTransmission();
+ 
+  // Start I2C Transmission
+  Wire.beginTransmission(MMA8452Q_Addr);
+  // Select control register
+  Wire.write(0x2A);
+  // Active mode
+  Wire.write(0x01);
+  // Stop I2C Transmission
+  Wire.endTransmission();
+ 
+  // Start I2C Transmission
+  Wire.beginTransmission(MMA8452Q_Addr);
+  // Select control register
+  Wire.write(0x0E);
+  // Set range to +/- 2g
+  Wire.write(0x00);
+  // Stop I2C Transmission
+  Wire.endTransmission();
+  delay(100);
+  //#####################################HDC1080#############################################
+ /* 
+#define HDC1080_ADDR          0x40 //7-bit I2C Address
+#define HDC1080_CFG_REG       0x02 //config mode
+#define HDC1080_TEMP_REG      0x00 //read tempurature
+#define HDC1080_HUMI_REG      0x01 //read humidity
+
+
+#define HDC1080_RST 0x80
+#define HDC1080_HEAT 0x20
+#define HDC1080_TEMP_HUM 0x10
+#define HDC1080_LOW_TRES 0x04
+#define HDC1080_LOW_HRES 0x02
+#define HDC1080_MID_HRES 0x01
+  */
+  Wire.beginTransmission(HDC1080_ADDR);
+  Wire.write(HDC1080_CFG_REG);
+  Wire.endTransmission(false);
+  Wire.requestFrom(HDC1080_ADDR,2);
+  if(Wire.available()==2)
+  {HDC1080_VAL=Wire.read();
+   Wire.read();
+    
+  }
+  HDC1080_VAL=0;
+  Wire.beginTransmission(HDC1080_ADDR);
+  Wire.write(HDC1080_CFG_REG);
+  Wire.write(0);
+  Wire.write(0);
+  Wire.endTransmission();
+
+
   
   Serial.begin(115200); // initialize serial communication at 115200 bits per second:
   Serial1.begin(9600);
@@ -149,8 +267,8 @@ void setup()
   pinMode(pulseLED, OUTPUT);
   pinMode(readLED, OUTPUT);
  pinMode(BLE_STAT_PIN,INPUT);
-  pinMode(1, INPUT);
-  attachInterrupt(1, NewPPG,FALLING);
+  pinMode(3, OUTPUT);
+ // attachInterrupt(1, NewPPG,FALLING);
 
   
 
@@ -179,31 +297,66 @@ void setup()
   }
 
   Serial.println(F("Attach sensor to finger with rubber band. Press any key to start conversion"));
+ /*
   while (Serial.available() == 0) ; //wait until user presses a key
-  Serial.read();
-
-  Serial1.print("AT+STARTEN1\r\n");
+  Serial.read(); */
+   delay(3000);
+ Serial1.print("AT+CMODE=1\r\n");
   delay(100);
+  
+  Serial1.print("AT+ROLE=0\r\n");
+  delay(100);
+  Serial1.print("AT+NAME=Smart Mask\r\n");
+  delay(100);
+   Serial1.print("AT+UART=115200,0,0\r\n");
+  delay(100);
+  Serial1.begin(115200);
+  
+
+  
+
+  /*
+
+ //Serial1.print("AT+STARTEN1\r\n");
+ // delay(100);
+
+  Serial1.print("AT+BAUD0\r\n");
+  delay(100);
+
+  Serial1.begin(115200);
+  
+
+  
+  //Serial1.print("AT+DEFAULT");
+  //Serial1.print("\r\n");
+  //delay(100); 
+
+  
   Serial1.print("AT+NAME");
-  Serial1.print(NAME_OF_MASK);//not work
+  Serial1.print(NAME_OF_MASK);
   Serial1.print("\r\n");
   delay(100);
+  Serial1.print("AT+ADVIN0\r\n");
+  delay(100);
   Serial1.print("AT+RST\r\n");
+  delay(100);
+
+  
+ 
+  Serial1.print("AT+STARTEN0\r\n");
+  delay(100);
+  */
 
 
 
  Serial.println(F("Attach sensor to finger with rubber band. Press any key to start conversion"));
+   /*
    while (Serial.available() == 0) ; //wait until user presses a key
-  Serial.read();
+  Serial.read();*/
 
   
 
-  byte ledBrightness = 60; //Options: 0=Off to 255=50mA
-  byte sampleAverage = 2; //Options: 1, 2, 4, 8, 16, 32
-  byte ledMode = 2; //Options: 1 = Red only, 2 = Red + IR, 3 = Red + IR + Green
-  byte sampleRate = 400; //Options: 50, 100, 200, 400, 800, 1000, 1600, 3200
-  int pulseWidth = 411; //Options: 69, 118, 215, 411
-  int adcRange = 4096; //Options: 2048, 4096, 8192, 16384
+
 
  
 
@@ -222,9 +375,10 @@ void loop()
   bufferLength = 100; //buffer length of 100 stores 4 seconds of samples running at 25sps
 
   //read the first 100 samples, and determine the signal range
-
+  
   My_Time.To_Stamp(2021, 5, 23, 9, 16, 0);
-  Serial.println(My_Time.Get_Stamp());
+  Serial.println(HDC1080_VAL);
+  
 
   for (byte i = 0 ; i < bufferLength ; i++)
   {
@@ -258,7 +412,30 @@ void loop()
   uint8_t COMMAND_COUNT=0;
   while (1)
   {
+    if(Serial.available())
+    {if(Serial.read()=='s')
+     {   Serial1.begin(9600);
+        Serial1.print("AT+CMODE=1\r\n");
+        delay(100);
+  
+        Serial1.print("AT+ROLE=0\r\n");
+        delay(100);
+        Serial.print(Serial1.read());
+        Serial1.print("AT+NAME=Smart Mask\r\n");
+        delay(100);
+        Serial.print(Serial1.read());
+        Serial1.print("AT+UART=115200,0,0\r\n");
+        delay(100);
+        Serial.print(Serial1.read());
 
+        Serial1.begin(115200);
+      
+     }
+    }
+
+   if(Mask_Mode==0 || Stress_Measured==1)
+    {
+    
       if(Serial1.available())
       {COMMAND_COUNT=0;
        Serial.printf("Bluetooth:");
@@ -287,9 +464,69 @@ void loop()
 
     spoiRead++;
 
+    if(spoiRead==2)
+    { 
+      
+      Wire.beginTransmission(HDC1080_ADDR);
+      Wire.write(HDC1080_TEMP_REG);
+      Wire.endTransmission(false);
+    
+    }
+    if(spoiRead==3)
+      {Wire.requestFrom(HDC1080_ADDR,2);
+       uint16_t temp_r=0;
+       if(Wire.available()==2)
+       {temp_r=(Wire.read())<<8;
+       temp_r=temp_r+Wire.read();
+       //Serial.println(temp_r);
+        
+      }
+
+      
+    }
+
   
    if(spoiRead==4 && No_spoi==0 )
    {spoiRead=0;
+
+     
+  // Request 7 bytes of data
+  Wire.requestFrom(MMA8452Q_Addr, 7);
+ 
+  // Read 7 bytes of data
+  // staus, xAccl lsb, xAccl msb, yAccl lsb, yAccl msb, zAccl lsb, zAccl msb
+  if(Wire.available() == 7) 
+  {
+    ACCEL[0] = Wire.read();
+    ACCEL[1] = Wire.read();
+    ACCEL[2] = Wire.read();
+    ACCEL[3] = Wire.read();
+    ACCEL[4] = Wire.read();
+    ACCEL[5] = Wire.read();
+    ACCEL[6] = Wire.read();
+  }
+ 
+  // Convert the data to 12-bits
+  int xAccl = ((ACCEL[1] <<8) + ACCEL[2]) >> 4;
+  if (xAccl > 2047)
+  {
+    xAccl -= 4096;
+  }
+ 
+  int yAccl = ((ACCEL[3] << 8) + ACCEL[4]) >> 4;
+  if (yAccl > 2047)
+  {
+    yAccl -= 4096;
+  }
+ 
+  int zAccl = ((ACCEL[5] << 8) + ACCEL[6]) >> 4;
+  if (zAccl > 2047)
+  {
+    zAccl -= 4096;
+  }
+ 
+  // Output data to serial monitor
+
 
 
     redBuffer[spoiPTR+75] =  particleSensor.getRed();
@@ -307,8 +544,13 @@ void loop()
        irBuffer[i - 25] = irBuffer[i];
        }
 
+
+
+
+ 
+
             //send samples and calculation result to terminal program through UART
-         if(digitalRead(BLE_STAT_PIN)) //BLE connected, send the data
+         if(digitalRead(BLE_STAT_PIN) && digitalRead(3)) //BLE connected, send the data
          {if(BLE_LAST_STAT == digitalRead(BLE_STAT_PIN))
           {while (BLE_Data_Read_RC!=BLE_Data_Write_RC)
            {
@@ -404,6 +646,13 @@ void loop()
 
       Serial.print(F(", SPO2="));
       Serial.println(spo2, DEC);
+
+        Serial.print("Acceleration in X-Axis : ");
+        Serial.println(xAccl);
+        Serial.print("Acceleration in Y-Axis : ");
+        Serial.println(yAccl);
+        Serial.print("Acceleration in Z-Axis : ");
+        Serial.println(zAccl);
 
   /*    Serial.print(F(", SPO2Valid="));
       Serial.println(validSPO2, DEC);*/
@@ -506,8 +755,16 @@ void loop()
     else
     {delay(1000);} //fake sleep
     
+     if(BT_SLEEP_COUNT>=BT_SLEEP_SECOND)
+     {
+      digitalWrite(3,0);
+     }
+     else
+     {
+       BT_SLEEP_COUNT++;
+     }
       particleSensor.wakeUp(); 
-         if(digitalRead(BLE_STAT_PIN)) //BLE connected, send the data
+         if(digitalRead(BLE_STAT_PIN) && digitalRead(3)) //BLE connected, send the data
          {if(BLE_LAST_STAT == digitalRead(BLE_STAT_PIN))
           {while (BLE_Data_Read_RC!=BLE_Data_Write_RC)
            {
@@ -558,6 +815,8 @@ void loop()
   //     particleSensor.nextSample(); //We're finished with this sample so move to next sample
      if((irBuffer[0]>50000))
      {Mask_On=1;
+      digitalWrite(3, 1);
+      BT_SLEEP_COUNT=0;
       
   for (byte i = 0 ; i < bufferLength ; i++)
   {
@@ -595,7 +854,165 @@ void loop()
     
 
   
+    }
 
+    else if (Mask_Mode==1 && Stress_Measured==0)
+    {
+      particleSensor.setup(60, 1,2, 400, 411, 4096); //Configure sensor with these settings
+      //particleSensor.setup();
+      
+/*
+struct PPG_Set{
+uint32_t Milli_Stamp;
+//uint32_t PPG_Red;
+uint32_t PPG_IR;
+};
+uint16_t BLE_Data_Read_RC=0;
+uint16_t BLE_Data_Write_RC=0;
+
+#define PPG_List_Length 2000
+struct PPG_List{
+ uint32_t Second_Stamp; //start
+ PPG_Set PPG_Sig[PPG_List_Length];
+};
+*/
+     PPG_List_Sent=0; 
+     Stress_Measured=1;
+     PPG_List_Ins.Second_Stamp=My_Time.Get_Stamp();
+     uint8_t ACCEL_READ_COUNT=3;
+      for (int j=0; j<PPG_List_Length; j++)
+      {//PPG_List_Ins.PPG_Sig[j].Milli_Stamp=millis();
+        PPG_List_Ins.PPG_Sig[j].PPG_IR=particleSensor.getIR();
+        ACCEL_READ_COUNT++;
+        TEMP_COUNT++;
+        if(TEMP_COUNT==12)
+        { 
+          TEMP_COUNT=0;
+           Wire.beginTransmission(HDC1080_ADDR);
+          Wire.write(HDC1080_TEMP_REG);
+          Wire.endTransmission(false);
+        
+         }
+          
+        
+        if((TEMP_COUNT)==9)
+        { Wire.requestFrom(HDC1080_ADDR,2);
+          if(Wire.available()==2)
+          {TEMP_A[j/12]=(Wire.read())<<8;
+           TEMP_A[j/12]=TEMP_A[j/12]+Wire.read();
+           //Serial.println(temp_r); 
+          }  
+         
+        }
+        
+        if(ACCEL_READ_COUNT==4)
+        {ACCEL_READ_COUNT=0;
+          Wire.requestFrom(MMA8452Q_Addr, 7);
+ 
+        // Read 7 bytes of data
+        // staus, xAccl lsb, xAccl msb, yAccl lsb, yAccl msb, zAccl lsb, zAccl msb
+        if(Wire.available() == 7) 
+        {
+          Wire.read();
+          ACCEL_X_LIST[j>>2] = Wire.read();
+          Wire.read();
+          ACCEL_Y_LIST[j>>2] = Wire.read();
+          Wire.read();
+          ACCEL_Z_LIST[j>>2] = Wire.read();
+          Wire.read();
+         }
+
+        
+         
+          
+        }
+        
+       //set Stress Measured to 0 if data not valid
+      }
+
+         
+      
+      particleSensor.setup(ledBrightness, sampleAverage, ledMode, sampleRate, pulseWidth, adcRange); //Configure sensor with these settings
+      //particleSensor.setup();
+    }
+    if(Mask_Mode==1 && Stress_Measured==1 && !PPG_List_Sent && digitalRead(3))
+    {  if(digitalRead(BLE_STAT_PIN))
+      {   Serial1.print('{');
+         Serial1.print('"');
+          Serial1.print("Second");
+          Serial1.print('"');
+          Serial1.print(':');
+          Serial1.print(PPG_List_Ins.Second_Stamp);
+          Serial1.print("}\r\n");
+       //    delay(20   );
+  
+         PPG_List_Sent=1; 
+      for (int j=0; j<PPG_List_Length; j++)
+      { Serial1.print('{');
+        
+        /*Serial1.print('"');
+          Serial1.print("Milli");
+          Serial1.print('"');
+          Serial1.print(':');
+          Serial1.print(PPG_List_Ins.PPG_Sig[j].Milli_Stamp);
+          Serial1.print(',');*/
+     //     delay(20);
+
+          Serial1.print('"');
+          Serial1.print("P");
+          Serial1.print('"');
+          Serial1.print(':');
+          Serial1.print(PPG_List_Ins.PPG_Sig[j].PPG_IR);
+          Serial1.print(',');
+
+          Serial1.print('"');
+          Serial1.print("X");
+          Serial1.print('"');
+          Serial1.print(':');
+          Serial1.print(ACCEL_X_LIST[j>>2]);
+          Serial1.print(',');
+
+          Serial1.print('"');
+          Serial1.print("Y");
+          Serial1.print('"');
+          Serial1.print(':');
+          Serial1.print(ACCEL_Y_LIST[j>>2]);
+          Serial1.print(',');
+
+          
+          Serial1.print('"');
+          Serial1.print("Z");
+          Serial1.print('"');
+          Serial1.print(':');
+          Serial1.print(ACCEL_Z_LIST[j>>2]);
+           Serial1.print(',');
+
+          Serial1.print('"');
+          Serial1.print("A");
+          Serial1.print('"');
+          Serial1.print(':');
+          Serial1.print(TEMP_A[j/50]);
+     
+
+          
+
+          
+          Serial1.print("}\r\n");
+     //     delay(20);
+
+          
+       if(digitalRead(BLE_STAT_PIN)==0)
+        { PPG_List_Sent=0; 
+          break;
+        }
+     
+       }
+       
+      
+         
+      }
+      
+    }
   // LowPower.sleep(1);  //now mcu goes in standby mode
   }
 }
@@ -681,12 +1098,13 @@ void timerIsr() // not work
 
   
 }
+/*
 void NewPPG()//not used
 {  digitalWrite(13, isLEDOn);
    isLEDOn = !isLEDOn;
   
 }
-
+*/
 
 void RTC_Isr()  //the MCU is waked up by RTC,every 1 second
 { My_Time.Next_Datetime();//run the soft RTC
@@ -696,4 +1114,9 @@ void RTC_Isr()  //the MCU is waked up by RTC,every 1 second
   rtc.setAlarmSeconds(NextSecond);
  // digitalWrite(13, isLEDOn);
  // isLEDOn = !isLEDOn;
+ Stress_Refresh_Count+=1;
+ if(Stress_Refresh_Count==3600)
+ {
+  Stress_Measured=0;
+ }
 }
