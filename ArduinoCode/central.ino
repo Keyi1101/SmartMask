@@ -102,6 +102,29 @@ uint32_t redBuffer[100];  //red LED sensor data
 #define HDC1080_LOW_HRES 0x0200
 #define HDC1080_MID_HRES 0x0100
 
+#define MCP9808_I2CADDR_A 0x1A ///< I2C address,  A1 connected to VCC
+
+#define MCP9808_I2CADDR_B 0x18 ///< I2C address, A0 connected to ground
+#define MCP9808_REG_CONFIG 0x01      ///< MCP9808 config register
+
+#define MCP9808_REG_CONFIG_SHUTDOWN 0x0100   ///< shutdown config
+#define MCP9808_REG_CONFIG_CRITLOCKED 0x0080 ///< critical trip lock
+#define MCP9808_REG_CONFIG_WINLOCKED 0x0040  ///< alarm window lock
+#define MCP9808_REG_CONFIG_INTCLR 0x0020     ///< interrupt clear
+#define MCP9808_REG_CONFIG_ALERTSTAT 0x0010  ///< alert output status
+#define MCP9808_REG_CONFIG_ALERTCTRL 0x0008  ///< alert output control
+#define MCP9808_REG_CONFIG_ALERTSEL 0x0004   ///< alert output select
+#define MCP9808_REG_CONFIG_ALERTPOL 0x0002   ///< alert output polarity
+#define MCP9808_REG_CONFIG_ALERTMODE 0x0001  ///< alert output mode
+
+#define MCP9808_REG_UPPER_TEMP 0x02   ///< upper alert boundary
+#define MCP9808_REG_LOWER_TEMP 0x03   ///< lower alert boundery
+#define MCP9808_REG_CRIT_TEMP 0x04    ///< critical temperature
+#define MCP9808_REG_AMBIENT_TEMP 0x05 ///< ambient temperature
+#define MCP9808_REG_MANUF_ID 0x06     ///< manufacture ID
+#define MCP9808_REG_DEVICE_ID 0x07    ///< device ID
+#define MCP9808_REG_RESOLUTION 0x08   ///< resolutin
+
 uint32_t irCurrent;
 uint32_t redCurrent;
 uint8_t spoiRead=0;
@@ -140,6 +163,8 @@ struct Data_Set{
   uint8_t Heart_Rate_S;
   uint8_t SPO2_S;
   uint8_t MOTION_LEVEL_S; 
+  uint8_t TEMP_S;          //30+TEMP_S/10
+  uint8_t Resp_Rate_S;
 
   
 };
@@ -185,9 +210,9 @@ int8_t ACCEL_Z_LIST[PPG_List_Length/4];
 
 uint16_t TEMP_A[PPG_List_Length/12];
 
-uint16_t TEMP_B[PPG_List_Length/12];
+int16_t TEMP_B[PPG_List_Length/12];
 
-uint16_t TEMP_C[PPG_List_Length/12];
+int16_t TEMP_C[PPG_List_Length/12];
 
 uint16_t HDC1080_VAL;
 
@@ -259,6 +284,22 @@ void setup()
   Wire.write(0);
   Wire.endTransmission();
 
+  //#####################################MPC9808_A#############################################
+
+  Wire.beginTransmission(MCP9808_I2CADDR_A);
+  Wire.write(MCP9808_REG_CONFIG);
+  Wire.write(0);
+  Wire.write(0);
+  Wire.endTransmission(false);
+
+    //#####################################MPC9808_B#############################################
+
+  Wire.beginTransmission(MCP9808_I2CADDR_B);
+  Wire.write(MCP9808_REG_CONFIG);
+  Wire.write(0);
+  Wire.write(0);
+  Wire.endTransmission(false);
+  
 
   
   Serial.begin(115200); // initialize serial communication at 115200 bits per second:
@@ -463,24 +504,108 @@ void loop()
       irCurrent = particleSensor.getIR();
 
     spoiRead++;
+    if(spoiRead==1)
+    {   
+
+
+         // Request 7 bytes of data
+      Wire.requestFrom(MMA8452Q_Addr, 7);
+ 
+  // Read 7 bytes of data
+  // staus, xAccl lsb, xAccl msb, yAccl lsb, yAccl msb, zAccl lsb, zAccl msb
+      if(Wire.available() == 7) 
+      {
+        ACCEL[0] = Wire.read();
+        ACCEL[1] = Wire.read();
+        ACCEL[2] = Wire.read();
+        ACCEL[3] = Wire.read();
+        ACCEL[4] = Wire.read();
+        ACCEL[5] = Wire.read();
+        ACCEL[6] = Wire.read();
+     }
+ 
+  // Convert the data to 12-bits
+      int xAccl = ((ACCEL[1] <<8) + ACCEL[2]) >> 4;
+      if (xAccl > 2047)
+      {
+        xAccl -= 4096;
+      }
+ 
+      int yAccl = ((ACCEL[3] << 8) + ACCEL[4]) >> 4;
+      if (yAccl > 2047)
+      {
+        yAccl -= 4096;
+      }
+ 
+      int zAccl = ((ACCEL[5] << 8) + ACCEL[6]) >> 4;
+      if (zAccl > 2047)
+      {
+        zAccl -= 4096;
+      }
+ 
+       // Output data to serial monitor
+
+
+        
+      
+      
+    }
 
     if(spoiRead==2)
     { 
-      
       Wire.beginTransmission(HDC1080_ADDR);
       Wire.write(HDC1080_TEMP_REG);
       Wire.endTransmission(false);
+
+        Wire.beginTransmission(MCP9808_I2CADDR_A);
+        Wire.write(MCP9808_REG_AMBIENT_TEMP);
+        Wire.endTransmission(false);
+
+        Wire.beginTransmission(MCP9808_I2CADDR_B);
+        Wire.write(MCP9808_REG_AMBIENT_TEMP);
+        Wire.endTransmission(false);
+        
     
     }
     if(spoiRead==3)
-      {Wire.requestFrom(HDC1080_ADDR,2);
+      {  
+         Wire.requestFrom(HDC1080_ADDR,2);
        uint16_t temp_r=0;
        if(Wire.available()==2)
        {temp_r=(Wire.read())<<8;
-       temp_r=temp_r+Wire.read();
-       //Serial.println(temp_r);
+        temp_r=temp_r+Wire.read();
+       //Serial.println(temp_r); 
+       }
         
-      }
+        
+        Wire.requestFrom(MCP9808_I2CADDR_A,2);
+       uint16_t temp_a=0;
+       if(Wire.available()==2)
+       {temp_a=(Wire.read() & 0xf)<<8;
+        temp_a=temp_a+Wire.read();
+        //Serial.println(temp_a);
+         if(temp_a & 0x1000)
+           {
+             temp_a-=4096;
+           }
+       }
+        
+        
+        
+        
+        Wire.requestFrom(MCP9808_I2CADDR_B,2);
+       uint16_t temp_b=0;
+       if(Wire.available()==2)
+       {temp_b=(Wire.read() & 0xf)<<8;
+        temp_b=temp_b+Wire.read();
+       // Serial.println(temp_b);
+          if(temp_b & 0x1000)
+           {
+             temp_b-=4096;
+           }
+       }
+        
+        
 
       
     }
@@ -490,42 +615,6 @@ void loop()
    {spoiRead=0;
 
      
-  // Request 7 bytes of data
-  Wire.requestFrom(MMA8452Q_Addr, 7);
- 
-  // Read 7 bytes of data
-  // staus, xAccl lsb, xAccl msb, yAccl lsb, yAccl msb, zAccl lsb, zAccl msb
-  if(Wire.available() == 7) 
-  {
-    ACCEL[0] = Wire.read();
-    ACCEL[1] = Wire.read();
-    ACCEL[2] = Wire.read();
-    ACCEL[3] = Wire.read();
-    ACCEL[4] = Wire.read();
-    ACCEL[5] = Wire.read();
-    ACCEL[6] = Wire.read();
-  }
- 
-  // Convert the data to 12-bits
-  int xAccl = ((ACCEL[1] <<8) + ACCEL[2]) >> 4;
-  if (xAccl > 2047)
-  {
-    xAccl -= 4096;
-  }
- 
-  int yAccl = ((ACCEL[3] << 8) + ACCEL[4]) >> 4;
-  if (yAccl > 2047)
-  {
-    yAccl -= 4096;
-  }
- 
-  int zAccl = ((ACCEL[5] << 8) + ACCEL[6]) >> 4;
-  if (zAccl > 2047)
-  {
-    zAccl -= 4096;
-  }
- 
-  // Output data to serial monitor
 
 
 
@@ -556,7 +645,7 @@ void loop()
            {
           Serial1.print("{");
           Serial1.print('"');
-          Serial1.print("Stamp");
+          Serial1.print("TIM");
           Serial1.print('"');
           Serial1.print(':');
           Serial1.print(Normal_Mode_Data[BLE_Data_Read_RC].Second_Stamp_S, DEC);
@@ -564,21 +653,49 @@ void loop()
 
           
           Serial1.print('"');
-          Serial1.print("SPO2");
+          Serial1.print("SPO");
           Serial1.print('"');
           Serial1.print(':');
           Serial1.print(Normal_Mode_Data[BLE_Data_Read_RC].SPO2_S, DEC);
           Serial1.print(',');
 
+        //fake data
+          Normal_Mode_Data[BLE_Data_Read_RC].MOTION_LEVEL_S=3; //will be classified later by ACCELERO
+          Normal_Mode_Data[BLE_Data_Read_RC].TEMP_S=63;  //will be calculate from three other temp
+          Normal_Mode_Data[BLE_Data_Read_RC].Resp_Rate_S=25;  //will be calculated from HDC1080 data
+          
+
          
           Serial1.print('"');
-          Serial1.print("Heart_Rate");
+          Serial1.print("HR");
           Serial1.print('"');
           Serial1.print(':');
           Serial1.print(Normal_Mode_Data[BLE_Data_Read_RC].Heart_Rate_S, DEC);
           Serial1.print(',');
+          float TEMP_tmp;
+
+          Serial1.print('"');
+          Serial1.print("MOT");
+          Serial1.print('"');
+          Serial1.print(':');
+          Serial1.print(Normal_Mode_Data[BLE_Data_Read_RC].MOTION_LEVEL_S, DEC);
+          Serial1.print(',');
+
+          Serial1.print('"');
+          Serial1.print("TEM");
+          Serial1.print('"');
+          Serial1.print(':');
+          TEMP_tmp=(Normal_Mode_Data[BLE_Data_Read_RC].TEMP_S)/10+30;
+          Serial1.print(TEMP_tmp, 1);
+          Serial1.print(',');
 
 
+          Serial1.print('"');
+          Serial1.print("RR");
+          Serial1.print('"');
+          Serial1.print(':');
+           TEMP_tmp=(Normal_Mode_Data[BLE_Data_Read_RC].Resp_Rate_S)/2;
+          Serial1.print(TEMP_tmp, 1);
 
           Serial1.print('}');
           Serial1.print("\r\n");
@@ -647,12 +764,6 @@ void loop()
       Serial.print(F(", SPO2="));
       Serial.println(spo2, DEC);
 
-        Serial.print("Acceleration in X-Axis : ");
-        Serial.println(xAccl);
-        Serial.print("Acceleration in Y-Axis : ");
-        Serial.println(yAccl);
-        Serial.print("Acceleration in Z-Axis : ");
-        Serial.println(zAccl);
 
   /*    Serial.print(F(", SPO2Valid="));
       Serial.println(validSPO2, DEC);*/
@@ -768,9 +879,9 @@ void loop()
          {if(BLE_LAST_STAT == digitalRead(BLE_STAT_PIN))
           {while (BLE_Data_Read_RC!=BLE_Data_Write_RC)
            {
-          Serial1.print("{");
+         Serial1.print("{");
           Serial1.print('"');
-          Serial1.print("Stamp");
+          Serial1.print("TIM");
           Serial1.print('"');
           Serial1.print(':');
           Serial1.print(Normal_Mode_Data[BLE_Data_Read_RC].Second_Stamp_S, DEC);
@@ -778,21 +889,49 @@ void loop()
 
           
           Serial1.print('"');
-          Serial1.print("SPO2");
+          Serial1.print("SPO");
           Serial1.print('"');
           Serial1.print(':');
           Serial1.print(Normal_Mode_Data[BLE_Data_Read_RC].SPO2_S, DEC);
           Serial1.print(',');
 
+        //fake data
+          Normal_Mode_Data[BLE_Data_Read_RC].MOTION_LEVEL_S=3; //will be classified later by ACCELERO
+          Normal_Mode_Data[BLE_Data_Read_RC].TEMP_S=63;  //will be calculate from three other temp
+          Normal_Mode_Data[BLE_Data_Read_RC].Resp_Rate_S=25;  //will be calculated from HDC1080 data
+          
+
          
           Serial1.print('"');
-          Serial1.print("Heart_Rate");
+          Serial1.print("HR");
           Serial1.print('"');
           Serial1.print(':');
           Serial1.print(Normal_Mode_Data[BLE_Data_Read_RC].Heart_Rate_S, DEC);
           Serial1.print(',');
+          float TEMP_tmp;
+
+          Serial1.print('"');
+          Serial1.print("MOT");
+          Serial1.print('"');
+          Serial1.print(':');
+          Serial1.print(Normal_Mode_Data[BLE_Data_Read_RC].MOTION_LEVEL_S, DEC);
+          Serial1.print(',');
+
+          Serial1.print('"');
+          Serial1.print("TEM");
+          Serial1.print('"');
+          Serial1.print(':');
+          TEMP_tmp=(Normal_Mode_Data[BLE_Data_Read_RC].TEMP_S)/10+30;
+          Serial1.print(TEMP_tmp, 1);
+          Serial1.print(',');
 
 
+          Serial1.print('"');
+          Serial1.print("RR");
+          Serial1.print('"');
+          Serial1.print(':');
+           TEMP_tmp=(Normal_Mode_Data[BLE_Data_Read_RC].Resp_Rate_S)/2;
+          Serial1.print(TEMP_tmp, 1);
 
           Serial1.print('}');
           Serial1.print("\r\n");
@@ -885,17 +1024,19 @@ struct PPG_List{
         PPG_List_Ins.PPG_Sig[j].PPG_IR=particleSensor.getIR();
         ACCEL_READ_COUNT++;
         TEMP_COUNT++;
-        if(TEMP_COUNT==12)
+        if(TEMP_COUNT==12) //do not use 2,6,10
         { 
           TEMP_COUNT=0;
-           Wire.beginTransmission(HDC1080_ADDR);
-          Wire.write(HDC1080_TEMP_REG);
-          Wire.endTransmission(false);
+
         
          }
+         if((TEMP_COUNT)==11)
+        { Wire.beginTransmission(HDC1080_ADDR);
+          Wire.write(HDC1080_TEMP_REG);
+          Wire.endTransmission(false);
           
-        
-        if((TEMP_COUNT)==9)
+        }
+        if(TEMP_COUNT==8)
         { Wire.requestFrom(HDC1080_ADDR,2);
           if(Wire.available()==2)
           {TEMP_A[j/12]=(Wire.read())<<8;
@@ -903,7 +1044,59 @@ struct PPG_List{
            //Serial.println(temp_r); 
           }  
          
+          
         }
+
+             if(TEMP_COUNT==3)
+             { 
+      
+              Wire.beginTransmission(MCP9808_I2CADDR_A);
+              Wire.write(MCP9808_REG_AMBIENT_TEMP);
+              Wire.endTransmission(false);
+      
+    
+              }
+              if(TEMP_COUNT==5)
+              {
+                 Wire.requestFrom(MCP9808_I2CADDR_A,2);
+                 uint16_t temp_a=0;
+                 if(Wire.available()==2)
+                 {TEMP_B[j/12]=(Wire.read() & 0xf)<<8;
+                  TEMP_B[j/12]=TEMP_B[j/12]+Wire.read();
+                  //Serial.println(temp_a);
+                  if(TEMP_B[j/12] & 0x1000)
+                  {
+                    TEMP_B[j/12]-=4096;
+                  }
+                 }
+                
+              }
+              if(TEMP_COUNT==7)
+              {    Wire.beginTransmission(MCP9808_I2CADDR_B);
+                   Wire.write(MCP9808_REG_AMBIENT_TEMP);
+                   Wire.endTransmission(false);
+        
+                
+              }
+              
+              if(TEMP_COUNT==9)
+                {   
+                  Wire.requestFrom(MCP9808_I2CADDR_B,2);
+                 uint16_t temp_b=0;
+                 if(Wire.available()==2)
+                 {TEMP_C[j/12]=(Wire.read() & 0xf)<<8;
+                  TEMP_C[j/12]=TEMP_C[j/12]+Wire.read();
+                 // Serial.println(temp_b);
+                  if(TEMP_C[j/12] & 0x1000)
+                  {
+                    TEMP_C[j/12]-=4096;
+                  }
+                 }
+                }
+         
+          
+        
+      
         
         if(ACCEL_READ_COUNT==4)
         {ACCEL_READ_COUNT=0;
@@ -991,7 +1184,22 @@ struct PPG_List{
           Serial1.print("A");
           Serial1.print('"');
           Serial1.print(':');
-          Serial1.print(TEMP_A[j/50]);
+          Serial1.print(TEMP_A[j/12]);
+          Serial1.print(',');
+
+          Serial1.print('"');
+          Serial1.print("B");
+          Serial1.print('"');
+          Serial1.print(':');
+          Serial1.print(TEMP_B[j/12]);
+          Serial1.print(',');
+
+          Serial1.print('"');
+          Serial1.print("C");
+          Serial1.print('"');
+          Serial1.print(':');
+          Serial1.print(TEMP_C[j/12]);
+        
      
 
           
