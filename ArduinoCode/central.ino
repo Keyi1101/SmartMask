@@ -30,8 +30,8 @@
 
 #include <Wire.h>
 #include "MAX30105.h"
-#include "spo2_algorithm.h"//by spark fun, free 
-//#include "algorithm_by_RF.h"//by aromring on Github, free
+//#include "spo2_algorithm.h"//by spark fun, free 
+#include "algorithm_by_RF.h"//by aromring on Github, free
 
 #include "heartRate.h"
 
@@ -52,7 +52,7 @@
 MAX30105 particleSensor;
 
 
-const byte RATE_SIZE = 4; //Increase this for more averaging. 4 is good.
+const byte RATE_SIZE = 2; //Increase this for more averaging. 4 is good.
 byte rates[RATE_SIZE]; //Array of heart rates
 byte rateSpot = 0;
 long lastBeat = 0; //Time at which the last beat occurred
@@ -134,8 +134,8 @@ uint8_t Mask_Mode=1; //mormal 1//measurement only
 bool PPG_List_Sent=1;
 
 int32_t bufferLength; //data length
-int32_t spo2; //SPO2 value
-//float spo2; //SPO2 value
+//int32_t spo2; //SPO2 value
+float spo2; //SPO2 value
 int8_t validSPO2; //indicator to show if the SPO2 calculation is valid
 int32_t heartRate; //heart rate value
 int8_t validHeartRate; //indicator to show if the heart rate calculation is valid
@@ -441,8 +441,8 @@ void loop()
   }
 
   //calculate heart rate and SpO2 after first 100 samples (first 4 seconds of samples)
-  maxim_heart_rate_and_oxygen_saturation(irBuffer, bufferLength, redBuffer, &spo2, &validSPO2, &heartRate, &validHeartRate);
-   // rf_heart_rate_and_oxygen_saturation(irBuffer, bufferLength, redBuffer, &spo2, &validSPO2, &heartRate, &validHeartRate, &signalRatio, &signalCorel);
+//  maxim_heart_rate_and_oxygen_saturation(irBuffer, bufferLength, redBuffer, &spo2, &validSPO2, &heartRate, &validHeartRate);
+   rf_heart_rate_and_oxygen_saturation(irBuffer, bufferLength, redBuffer, &spo2, &validSPO2, &heartRate, &validHeartRate, &signalRatio, &signalCorel);
       for (byte i = spoiPTR_MAX; i < 200; i++)
       {
        redBuffer[i - spoiPTR_MAX] = redBuffer[i];
@@ -632,8 +632,8 @@ void loop()
    if(spoiPTR==spoiPTR_MAX)
     {spoiPTR=0;
       
-      maxim_heart_rate_and_oxygen_saturation(irBuffer, bufferLength, redBuffer, &spo2, &validSPO2, &heartRate, &validHeartRate);
-      //rf_heart_rate_and_oxygen_saturation(irBuffer, bufferLength, redBuffer, &spo2, &validSPO2, &heartRate, &validHeartRate, &signalRatio, &signalCorel);
+     // maxim_heart_rate_and_oxygen_saturation(irBuffer, bufferLength, redBuffer, &spo2, &validSPO2, &heartRate, &validHeartRate);
+      rf_heart_rate_and_oxygen_saturation(irBuffer, bufferLength, redBuffer, &spo2, &validSPO2, &heartRate, &validHeartRate, &signalRatio, &signalCorel);
       for (byte i = spoiPTR_MAX; i < 200; i++)
       {
        redBuffer[i - spoiPTR_MAX] = redBuffer[i];
@@ -795,9 +795,12 @@ void loop()
 
     beatsPerMinute = 60 / (delta / 1000.0);
 
-    if (beatsPerMinute < 200 && beatsPerMinute > 35)
-    {
-      rates[rateSpot++] = (byte)beatsPerMinute; //Store this reading in the array
+ 
+  } 
+
+    if (heartRate < 200 && heartRate > 35)
+    {/*
+      rates[rateSpot++] = (byte)heartRate; //Store this reading in the array
       rateSpot %= RATE_SIZE; //Wrap variable
 
       //Take average of readings
@@ -805,8 +808,25 @@ void loop()
       for (byte x = 0 ; x < RATE_SIZE ; x++)
         beatAvg += rates[x];
       beatAvg /= RATE_SIZE;
+
+      */
+      beatAvg=heartRate;
+      
     }
-  } 
+    else if(beatsPerMinute < 200 && beatsPerMinute > 35)
+    { /*
+      rates[rateSpot++] = (byte)beatsPerMinute; //Store this reading in the array
+      rateSpot %= RATE_SIZE; //Wrap variable
+
+      //Take average of readings
+      beatAvg = 0;
+      for (byte x = 0 ; x < RATE_SIZE ; x++)
+        beatAvg += rates[x];
+      beatAvg /= RATE_SIZE;*/
+      beatAvg=beatsPerMinute;
+      
+    }
+  
 /*
       Serial.print(", HRPBA=");
       Serial.print(beatsPerMinute);
@@ -983,8 +1003,8 @@ void loop()
   }
 
   //calculate heart rate and SpO2 after first 100 samples (first 4 seconds of samples)
-  maxim_heart_rate_and_oxygen_saturation(irBuffer, bufferLength, redBuffer, &spo2, &validSPO2, &heartRate, &validHeartRate);
-  // rf_heart_rate_and_oxygen_saturation(irBuffer, bufferLength, redBuffer, &spo2, &validSPO2, &heartRate, &validHeartRate, &signalRatio, &signalCorel);
+//  maxim_heart_rate_and_oxygen_saturation(irBuffer, bufferLength, redBuffer, &spo2, &validSPO2, &heartRate, &validHeartRate);
+   rf_heart_rate_and_oxygen_saturation(irBuffer, bufferLength, redBuffer, &spo2, &validSPO2, &heartRate, &validHeartRate, &signalRatio, &signalCorel);
      
       for (byte i = spoiPTR_MAX; i < 200; i++)
       {
