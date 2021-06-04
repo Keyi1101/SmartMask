@@ -143,7 +143,7 @@ float signalRatio;
 float signalCorel;
 
   byte ledBrightness = 60; //Options: 0=Off to 255=50mA
-  byte sampleAverage = 2; //Options: 1, 2, 4, 8, 16, 32
+  byte sampleAverage = 1; //Options: 1, 2, 4, 8, 16, 32
   byte ledMode = 2; //Options: 1 = Red only, 2 = Red + IR, 3 = Red + IR + Green
   byte sampleRate = 400; //Options: 50, 100, 200, 400, 800, 1000, 1600, 3200
   int pulseWidth = 411; //Options: 69, 118, 215, 411
@@ -172,14 +172,14 @@ struct Data_Set{
 
 struct PPG_Set{
 //uint32_t Milli_Stamp;
-//uint32_t PPG_Red;
+uint32_t PPG_Red;
 uint32_t PPG_IR;
 
 };
 uint16_t BLE_Data_Read_RC=0;
 uint16_t BLE_Data_Write_RC=0;
 
-#define PPG_List_Length 1992
+#define PPG_List_Length 996
 struct PPG_List{
  uint32_t Second_Stamp; //start
  PPG_Set PPG_Sig[PPG_List_Length];
@@ -193,7 +193,7 @@ uint16_t BT_SLEEP_COUNT=0;
 uint16_t BT_SLEEP_SECOND=90;
 
 bool TEMP_COUNT_NORM=1;
-uint8_t TEMP_COUNT=9;
+uint8_t TEMP_COUNT=4;
 
 datetime My_Time;
 RTCZero rtc;
@@ -204,18 +204,19 @@ bool Mask_On = false; //detect whether the user is wearing the mask
 
 
 uint16_t ACCEL[7];
-int8_t ACCEL_X_LIST[PPG_List_Length/4];
-int8_t ACCEL_Y_LIST[PPG_List_Length/4];
-int8_t ACCEL_Z_LIST[PPG_List_Length/4];
+int8_t ACCEL_X_LIST[PPG_List_Length/2];
+int8_t ACCEL_Y_LIST[PPG_List_Length/2];
+int8_t ACCEL_Z_LIST[PPG_List_Length/2];
 
-uint16_t TEMP_A[PPG_List_Length/12];
+uint16_t TEMP_A[PPG_List_Length/6];
 
-int16_t TEMP_B[PPG_List_Length/12];
+int16_t TEMP_B[PPG_List_Length/6];
 
-int16_t TEMP_C[PPG_List_Length/12];
+int16_t TEMP_C[PPG_List_Length/6];
 
 uint16_t HDC1080_VAL;
 
+uint8_t spoiPTR_MAX=25;  //25 1 data/s, 50, 1 data/2s..... 100, 1 data/4s..  Total data storage = 1000.
 
 
 void setup()
@@ -404,7 +405,7 @@ void setup()
   particleSensor.setup(ledBrightness, sampleAverage, ledMode, sampleRate, pulseWidth, adcRange); //Configure sensor with these settings
   //particleSensor.setup();
  //  particleSensor.setPulseAmplitudeRed(0x0A); //Turn Red LED to low to indicate sensor is running
-  particleSensor.setPulseAmplitudeGreen(0); //Turn off Green LED
+ // particleSensor.setPulseAmplitudeGreen(0); //Turn off Green LED
 
  //    TimerTcc0.initialize((100000/sampleRate*sampleAverage));
 
@@ -418,7 +419,7 @@ void loop()
   //read the first 100 samples, and determine the signal range
   
   My_Time.To_Stamp(2021, 5, 23, 9, 16, 0);
-  Serial.println(HDC1080_VAL);
+  //Serial.println(HDC1080_VAL);
   
 
   for (byte i = 0 ; i < bufferLength ; i++)
@@ -502,6 +503,7 @@ void loop()
    //do not get red here to save time.
    
       irCurrent = particleSensor.getIR();
+      redCurrent= particleSensor.getRed();
 
     spoiRead++;
     if(spoiRead==1)
@@ -610,19 +612,24 @@ void loop()
       
     }
 
+   if(spoiRead==4)
+   {
+    spoiRead=0;
+    
+   }
   
-   if(spoiRead==4 && No_spoi==0 )
-   {spoiRead=0;
+   if( No_spoi==0 && (spoiRead>>1)==0 )
+   {
 
      
 
 
 
-    redBuffer[spoiPTR+75] =  particleSensor.getRed();
+    redBuffer[spoiPTR+75] =  redCurrent;
     irBuffer[spoiPTR+75] =  irCurrent;
     spoiPTR++;
     
-   if(spoiPTR==25)
+   if(spoiPTR==spoiPTR_MAX)
     {spoiPTR=0;
       
       maxim_heart_rate_and_oxygen_saturation(irBuffer, bufferLength, redBuffer, &spo2, &validSPO2, &heartRate, &validHeartRate);
@@ -1018,87 +1025,91 @@ struct PPG_List{
      PPG_List_Sent=0; 
      Stress_Measured=1;
      PPG_List_Ins.Second_Stamp=My_Time.Get_Stamp();
-     uint8_t ACCEL_READ_COUNT=3;
+     uint8_t ACCEL_READ_COUNT=1;
+
+       Wire.beginTransmission(MCP9808_I2CADDR_B);
+       Wire.write(MCP9808_REG_AMBIENT_TEMP);
+       Wire.endTransmission(false);
       for (int j=0; j<PPG_List_Length; j++)
       {//PPG_List_Ins.PPG_Sig[j].Milli_Stamp=millis();
         PPG_List_Ins.PPG_Sig[j].PPG_IR=particleSensor.getIR();
+        PPG_List_Ins.PPG_Sig[j].PPG_Red=particleSensor.getRed();
+    //    delay(2);
         ACCEL_READ_COUNT++;
         TEMP_COUNT++;
-        if(TEMP_COUNT==12) //do not use 2,6,10
+        if(TEMP_COUNT==6) //do not use 1,3,5
         { 
+               
+          
           TEMP_COUNT=0;
+
+            Wire.requestFrom(MCP9808_I2CADDR_B,2);
+                 uint16_t temp_b=0;
+                 if(Wire.available()==2)
+                 {TEMP_C[j/6]=(Wire.read() & 0xf)<<8;
+                  TEMP_C[j/6]=TEMP_C[j/6]+Wire.read();
+                 // Serial.println(temp_b);
+                  if(TEMP_C[j/6] & 0x1000)
+                  {
+                    TEMP_C[j/6]-=4096;
+                  }
+                 }
+          Wire.beginTransmission(HDC1080_ADDR);
+          Wire.write(HDC1080_TEMP_REG);
+          Wire.endTransmission(false);
 
         
          }
-         if((TEMP_COUNT)==11)
-        { Wire.beginTransmission(HDC1080_ADDR);
-          Wire.write(HDC1080_TEMP_REG);
-          Wire.endTransmission(false);
-          
-        }
-        if(TEMP_COUNT==8)
+
+         
+      
+        if(TEMP_COUNT==2)
         { Wire.requestFrom(HDC1080_ADDR,2);
           if(Wire.available()==2)
-          {TEMP_A[j/12]=(Wire.read())<<8;
-           TEMP_A[j/12]=TEMP_A[j/12]+Wire.read();
+          {TEMP_A[j/6]=(Wire.read())<<8;
+           TEMP_A[j/6]=TEMP_A[j/6]+Wire.read();
            //Serial.println(temp_r); 
           }  
+           Wire.beginTransmission(MCP9808_I2CADDR_A);
+              Wire.write(MCP9808_REG_AMBIENT_TEMP);
+              Wire.endTransmission(false);
+      
          
           
         }
 
-             if(TEMP_COUNT==3)
+             if(TEMP_COUNT==4)
              { 
-      
-              Wire.beginTransmission(MCP9808_I2CADDR_A);
-              Wire.write(MCP9808_REG_AMBIENT_TEMP);
-              Wire.endTransmission(false);
-      
-    
-              }
-              if(TEMP_COUNT==5)
-              {
-                 Wire.requestFrom(MCP9808_I2CADDR_A,2);
+                Wire.requestFrom(MCP9808_I2CADDR_A,2);
                  uint16_t temp_a=0;
                  if(Wire.available()==2)
-                 {TEMP_B[j/12]=(Wire.read() & 0xf)<<8;
-                  TEMP_B[j/12]=TEMP_B[j/12]+Wire.read();
+                 {TEMP_B[j/6]=(Wire.read() & 0xf)<<8;
+                  TEMP_B[j/6]=TEMP_B[j/6]+Wire.read();
                   //Serial.println(temp_a);
-                  if(TEMP_B[j/12] & 0x1000)
+                  if(TEMP_B[j/6] & 0x1000)
                   {
-                    TEMP_B[j/12]-=4096;
+                    TEMP_B[j/6]-=4096;
                   }
                  }
-                
-              }
-              if(TEMP_COUNT==7)
-              {    Wire.beginTransmission(MCP9808_I2CADDR_B);
+
+                 Wire.beginTransmission(MCP9808_I2CADDR_B);
                    Wire.write(MCP9808_REG_AMBIENT_TEMP);
                    Wire.endTransmission(false);
         
-                
+      
+             
+    
               }
+         
+        
               
-              if(TEMP_COUNT==9)
-                {   
-                  Wire.requestFrom(MCP9808_I2CADDR_B,2);
-                 uint16_t temp_b=0;
-                 if(Wire.available()==2)
-                 {TEMP_C[j/12]=(Wire.read() & 0xf)<<8;
-                  TEMP_C[j/12]=TEMP_C[j/12]+Wire.read();
-                 // Serial.println(temp_b);
-                  if(TEMP_C[j/12] & 0x1000)
-                  {
-                    TEMP_C[j/12]-=4096;
-                  }
-                 }
-                }
+            
          
           
         
       
         
-        if(ACCEL_READ_COUNT==4)
+        if(ACCEL_READ_COUNT==2)
         {ACCEL_READ_COUNT=0;
           Wire.requestFrom(MMA8452Q_Addr, 7);
  
@@ -1107,11 +1118,11 @@ struct PPG_List{
         if(Wire.available() == 7) 
         {
           Wire.read();
-          ACCEL_X_LIST[j>>2] = Wire.read();
+          ACCEL_X_LIST[j>>1] = Wire.read();
           Wire.read();
-          ACCEL_Y_LIST[j>>2] = Wire.read();
+          ACCEL_Y_LIST[j>>1] = Wire.read();
           Wire.read();
-          ACCEL_Z_LIST[j>>2] = Wire.read();
+          ACCEL_Z_LIST[j>>1] = Wire.read();
           Wire.read();
          }
 
@@ -1122,7 +1133,7 @@ struct PPG_List{
         
        //set Stress Measured to 0 if data not valid
       }
-
+        
          
       
       particleSensor.setup(ledBrightness, sampleAverage, ledMode, sampleRate, pulseWidth, adcRange); //Configure sensor with these settings
@@ -1152,24 +1163,31 @@ struct PPG_List{
      //     delay(20);
 
           Serial1.print('"');
-          Serial1.print("P");
+          Serial1.print("I");
           Serial1.print('"');
           Serial1.print(':');
           Serial1.print(PPG_List_Ins.PPG_Sig[j].PPG_IR);
           Serial1.print(',');
 
           Serial1.print('"');
+          Serial1.print("R");
+          Serial1.print('"');
+          Serial1.print(':');
+          Serial1.print(PPG_List_Ins.PPG_Sig[j].PPG_Red);
+          Serial1.print(',');
+
+          Serial1.print('"');
           Serial1.print("X");
           Serial1.print('"');
           Serial1.print(':');
-          Serial1.print(ACCEL_X_LIST[j>>2]);
+          Serial1.print(ACCEL_X_LIST[j>>1]);
           Serial1.print(',');
 
           Serial1.print('"');
           Serial1.print("Y");
           Serial1.print('"');
           Serial1.print(':');
-          Serial1.print(ACCEL_Y_LIST[j>>2]);
+          Serial1.print(ACCEL_Y_LIST[j>>1]);
           Serial1.print(',');
 
           
@@ -1177,28 +1195,28 @@ struct PPG_List{
           Serial1.print("Z");
           Serial1.print('"');
           Serial1.print(':');
-          Serial1.print(ACCEL_Z_LIST[j>>2]);
+          Serial1.print(ACCEL_Z_LIST[j>>1]);
            Serial1.print(',');
 
           Serial1.print('"');
           Serial1.print("A");
           Serial1.print('"');
           Serial1.print(':');
-          Serial1.print(TEMP_A[j/12]);
+          Serial1.print(TEMP_A[j/6]);
           Serial1.print(',');
 
           Serial1.print('"');
           Serial1.print("B");
           Serial1.print('"');
           Serial1.print(':');
-          Serial1.print(TEMP_B[j/12]);
+          Serial1.print(TEMP_B[j/6]);
           Serial1.print(',');
 
           Serial1.print('"');
           Serial1.print("C");
           Serial1.print('"');
           Serial1.print(':');
-          Serial1.print(TEMP_C[j/12]);
+          Serial1.print(TEMP_C[j/6]);
         
      
 
