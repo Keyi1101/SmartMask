@@ -47,7 +47,7 @@ class MAX30105 {
  public: 
   MAX30105(void);
 
-  boolean begin(TwoWire &wirePort = Wire, uint32_t i2cSpeed = I2C_SPEED_STANDARD, uint8_t i2caddr = MAX30105_ADDRESS);
+  boolean begin(TwoWire &wirePort = Wire, uint32_t i2cSpeed = I2C_SPEED_FAST, uint8_t i2caddr = MAX30105_ADDRESS);
 
   uint32_t getRed(void); //Returns immediate red value
   uint32_t getIR(void); //Returns immediate IR value

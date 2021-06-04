@@ -81,12 +81,12 @@ char NAME_OF_MASK[MAX_NAME_LENGTH]="Smart Mask";
 #if defined(__AVR_ATmega328P__) || defined(__AVR_ATmega168__)
 //Arduino Uno doesn't have enough SRAM to store 100 samples of IR led data and red led data in 32-bit format
 //To solve this problem, 16-bit MSB of the sampled data will be truncated. Samples become 16-bit data.
-uint32_t irBuffer[100]; //infrared LED sensor data
-uint32_t redBuffer[100];  //red LED sensor data
+uint32_t irBuffer[200]; //infrared LED sensor data
+uint32_t redBuffer[200];  //red LED sensor data
 
 #else
-uint32_t irBuffer[100]; //infrared LED sensor data
-uint32_t redBuffer[100];  //red LED sensor data
+uint32_t irBuffer[200]; //infrared LED sensor data
+uint32_t redBuffer[200];  //red LED sensor data
 #endif
 
 #define HDC1080_ADDR          0x40 //7-bit I2C Address
@@ -216,7 +216,7 @@ int16_t TEMP_C[PPG_List_Length/6];
 
 uint16_t HDC1080_VAL;
 
-uint8_t spoiPTR_MAX=25;  //25 1 data/s, 50, 1 data/2s..... 100, 1 data/4s..  Total data storage = 1000.
+uint8_t spoiPTR_MAX=50;  //25 1 data/s, 50, 1 data/2s..... 100, 1 data/4s..  Total data storage = 1000.
 
 
 void setup()
@@ -414,7 +414,7 @@ void setup()
 
 void loop()
 { 
-  bufferLength = 100; //buffer length of 100 stores 4 seconds of samples running at 25sps
+  bufferLength = 200; //buffer length of 100 stores 4 seconds of samples running at 25sps
 
   //read the first 100 samples, and determine the signal range
   
@@ -443,10 +443,10 @@ void loop()
   //calculate heart rate and SpO2 after first 100 samples (first 4 seconds of samples)
   maxim_heart_rate_and_oxygen_saturation(irBuffer, bufferLength, redBuffer, &spo2, &validSPO2, &heartRate, &validHeartRate);
    // rf_heart_rate_and_oxygen_saturation(irBuffer, bufferLength, redBuffer, &spo2, &validSPO2, &heartRate, &validHeartRate, &signalRatio, &signalCorel);
-      for (byte i = 25; i < 100; i++)
+      for (byte i = spoiPTR_MAX; i < 200; i++)
       {
-       redBuffer[i - 25] = redBuffer[i];
-       irBuffer[i - 25] = irBuffer[i];
+       redBuffer[i - spoiPTR_MAX] = redBuffer[i];
+       irBuffer[i - spoiPTR_MAX] = irBuffer[i];
       }
   //Continuously taking samples from MAX30102.  Heart rate and SpO2 are calculated every 1 second
  // TimerTcc0.attachInterrupt(timerIsr);//not working
@@ -618,15 +618,15 @@ void loop()
     
    }
   
-   if( No_spoi==0 && (spoiRead>>1)==0 )
+   if( No_spoi==0 )
    {
 
      
 
 
 
-    redBuffer[spoiPTR+75] =  redCurrent;
-    irBuffer[spoiPTR+75] =  irCurrent;
+    redBuffer[spoiPTR+200-spoiPTR_MAX] =  redCurrent;
+    irBuffer[spoiPTR+200-spoiPTR_MAX] =  irCurrent;
     spoiPTR++;
     
    if(spoiPTR==spoiPTR_MAX)
@@ -634,10 +634,10 @@ void loop()
       
       maxim_heart_rate_and_oxygen_saturation(irBuffer, bufferLength, redBuffer, &spo2, &validSPO2, &heartRate, &validHeartRate);
       //rf_heart_rate_and_oxygen_saturation(irBuffer, bufferLength, redBuffer, &spo2, &validSPO2, &heartRate, &validHeartRate, &signalRatio, &signalCorel);
-      for (byte i = 25; i < 100; i++)
+      for (byte i = spoiPTR_MAX; i < 200; i++)
       {
-       redBuffer[i - 25] = redBuffer[i];
-       irBuffer[i - 25] = irBuffer[i];
+       redBuffer[i - spoiPTR_MAX] = redBuffer[i];
+       irBuffer[i - spoiPTR_MAX] = irBuffer[i];
        }
 
 
@@ -986,10 +986,10 @@ void loop()
   maxim_heart_rate_and_oxygen_saturation(irBuffer, bufferLength, redBuffer, &spo2, &validSPO2, &heartRate, &validHeartRate);
   // rf_heart_rate_and_oxygen_saturation(irBuffer, bufferLength, redBuffer, &spo2, &validSPO2, &heartRate, &validHeartRate, &signalRatio, &signalCorel);
      
-      for (byte i = 25; i < 100; i++)
+      for (byte i = spoiPTR_MAX; i < 200; i++)
       {
-       redBuffer[i - 25] = redBuffer[i];
-       irBuffer[i - 25] = irBuffer[i];
+       redBuffer[i - spoiPTR_MAX] = redBuffer[i];
+       irBuffer[i - spoiPTR_MAX] = irBuffer[i];
       }
       
       

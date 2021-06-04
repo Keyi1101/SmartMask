@@ -64,7 +64,7 @@
 
 #include <Arduino.h>
 
-#define FreqS 25    //sampling frequency
+#define FreqS 50    //sampling frequency
 #define BUFFER_SIZE (FreqS * 4) 
 #define MA4_SIZE 4 // DONOT CHANGE
 //#define min(x,y) ((x) < (y) ? (x) : (y)) //Defined in Arduino.h
@@ -99,4 +99,3 @@ void maxim_sort_ascend(int32_t  *pn_x, int32_t n_size);
 void maxim_sort_indices_descend(int32_t  *pn_x, int32_t *pn_indx, int32_t n_size);
 
 #endif /* ALGORITHM_H_ */
-

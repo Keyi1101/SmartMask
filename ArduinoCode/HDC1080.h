@@ -1,5 +1,5 @@
 //This is the class for the tempurature/humidity sensor for the Mask.
-
+//not used, no needed
 #pragma once
 
 #if (ARDUINO >= 100)

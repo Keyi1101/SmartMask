@@ -315,7 +315,3 @@ void maxim_sort_indices_descend(  int32_t  *pn_x, int32_t *pn_indx, int32_t n_si
     pn_indx[j] = n_temp;
   }
 }
-
-
-
-
