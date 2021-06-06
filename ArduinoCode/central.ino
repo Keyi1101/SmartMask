@@ -225,6 +225,9 @@ uint8_t Resp_Rate_Buff=0;
 uint16_t peak_temp=0;
 
 
+bool Freeze_m=0; //shut down to power save at low power
+
+
 void setup()
 { 
    pinMode(3, OUTPUT); 
@@ -866,10 +869,12 @@ void loop()
             Serial1.print(',');
 
            
-           uint16_t sensorValue = analogRead(A0);
+           uint16_t sensorValue = analogRead(1);
+            if(sensorValue<900)
+            {Freeze_m=1;}
   // Convert the analog reading (which goes from 0 - 1023) to a voltage (0 - 5V):
       //     float voltage = sensorValue * (5.0 / 1023.0);
-          TEMP_tmp= (sensorValue-593)/(859-593); // a rough estimation, but enough for this kind of applications
+         TEMP_tmp= (float)(sensorValue-899)/(float)(1023-899); // a rough estimation, but enough for this kind of applications
                      // (Vbat-2.9V)/(4.2V-2.9V)
 
           Serial1.print('"');
@@ -1065,6 +1070,14 @@ void loop()
    {Mask_On=0;
     particleSensor.clearFIFO();
     particleSensor.shutDown(); 
+    uint16_t sensorValue = analogRead(1);
+  // Convert the analog reading (which goes from 0 - 1023) to a voltage (0 - 5V):
+      //     float voltage = sensorValue * (5.0 / 1023.0);
+   // TEMP_tmp= (sensorValue-593)/(859-593); // a rough estimation, but enough for this kind of applications
+                     // (Vbat-2.9V)/(4.2V-2.9V)
+   if(sensorValue<900)
+   {Freeze_m=1;}
+    
 
     if(!IN_DEBUGING)
     {nrgSave.standby();}  //now mcu goes in standby mode, this will affect debugging
@@ -1136,6 +1149,18 @@ void loop()
           Serial1.print(':');
            TEMP_tmp=((float)(Normal_Mode_Data[BLE_Data_Read_RC].Resp_Rate_S))/2.0;
           Serial1.print(TEMP_tmp, 1);
+          Serial1.print(',');
+
+           TEMP_tmp= (float)(sensorValue-899)/(float)(1023-899); // a rough estimation, but enough for this kind of applications
+                     // (Vbat-2.9V)/(4.2V-2.9V)
+
+
+          Serial1.print('"');
+          Serial1.print("bat");
+          Serial1.print('"');
+          Serial1.print(':');
+          Serial1.print(TEMP_tmp, 2);
+
 
           Serial1.print('}');
           Serial1.print("\r\n");
