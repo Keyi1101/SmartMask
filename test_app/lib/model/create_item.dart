@@ -7,10 +7,12 @@ Future<void> createItem(Product product) async {
   return http
       .post(url,
           body: "{" +
-              "\"heartrate\": \"${product.heartrate}\", "
+              "\"createAt\": \"${product.tim}\", "
+                  "\"heartrate\": \"${product.heartrate}\", "
                   "\"temperature\": \"${product.temperature}\", "
                   "\"movement\": \"${product.movement}\", "
-                  "\"oxygenconc\": \"${product.oxygenconc}\" }")
+                  "\"oxygenconc\": \"${product.oxygenconc}\", "
+                  "\"rr\": \"${product.rr}\" }")
 
       .then((http.Response response) {
     final int statusCode = response.statusCode;
