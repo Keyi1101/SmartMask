@@ -1,31 +1,31 @@
 
 
 /*
-  Optical SP02 Detection (SPK Algorithm) using the MAX30105 Breakout
-  By: Nathan Seidle @ SparkFun Electronics
-  Date: October 19th, 2016
-  https://github.com/sparkfun/MAX30105_Breakout
-
-  This demo shows heart rate and SPO2 levels.
-
-  It is best to attach the sensor to your finger using a rubber band or other tightening 
-  device. Humans are generally bad at applying constant pressure to a thing. When you 
-  press your finger against the sensor it varies enough to cause the blood in your 
-  finger to flow differently which causes the sensor readings to go wonky.
-
-  This example is based on MAXREFDES117 and RD117_LILYPAD.ino from Maxim. Their example
-  was modified to work with the SparkFun MAX30105 library and to compile under Arduino 1.6.11
-  Please see license file for more info.
-
+  This is the central code for Smart Mask.
+  The code is designed for seeduino XIAO and other M0+ processors
+  Functions:
+  Real time clock with time stamp.
+  Data storage management and sending via bluetooth.
+  Power saving system (should disable debug mode by define)
+  Processed data: Heart Rate, SPO2, Respiration Rate, Body Tempuration, Motion
+  Raw data: IR +Red PPG, Accelerometer XYZ, Resp Temp, skin temp, enviroment temp.
+  
   Hardware Connections (Breakoutboard to Arduino):
+  MAX3010X
   -5V = 5V (3.3V is allowed)
   -GND = GND
   -SDA = A4 (or SDA)
   -SCL = A5 (or SCL)
   -INT = Not connected
+
+  //check read me for details
+
+  
  
   The MAX30105 Breakout can handle 5V or 3.3V I2C logic. We recommend powering the board with 5V
   but it will also run at 3.3V.
+
+  
 */
 
 #include <Wire.h>
@@ -158,6 +158,7 @@ uint16_t Stress_Refresh_Count=3599;
 uint8_t NextSecond=0; //the alarm will take place when time change to the next second.
 
 
+
 struct Data_Set{
   uint32_t Second_Stamp_S;
   uint8_t Heart_Rate_S;
@@ -218,11 +219,17 @@ uint16_t HDC1080_VAL;
 
 uint8_t spoiPTR_MAX=50;  //25 1 data/s, 50, 1 data/2s..... 100, 1 data/4s..  Total data storage = 1000.
 
+uint16_t Resp_Temp[200];
+uint8_t Resp_Temp_Count=0;
+uint8_t Resp_Rate_Buff=0;
+uint16_t peak_temp=0;
+
 
 void setup()
 { 
-   pinMode(13, OUTPUT); 
+   pinMode(3, OUTPUT); 
     digitalWrite(3, 1);
+    pinMode(1, INPUT); 
    Wire.begin();
    Wire.setClock(400000);
 
@@ -420,17 +427,58 @@ void loop()
   
   My_Time.To_Stamp(2021, 5, 23, 9, 16, 0);
   //Serial.println(HDC1080_VAL);
-  
 
+
+  for(int i=100; i<150; i++)//leave the rest sample empty to make faster
+{  Wire.beginTransmission(HDC1080_ADDR);
+   Wire.write(HDC1080_TEMP_REG);
+   Wire.endTransmission(false);
+   delay(79);
+    Wire.requestFrom(HDC1080_ADDR,2);
+       uint16_t temp_r=0;
+       if(Wire.available()==2)
+       {temp_r=(Wire.read())<<8;
+        temp_r=temp_r+Wire.read();
+       
+       Resp_Temp[i]=temp_r;
+       Serial.println(Resp_Temp[i]); 
+       
+       }
+      
+
+  
+}
+  
+ uint8_t Temp_Read=3;
   for (byte i = 0 ; i < bufferLength ; i++)
   {
  //   while (particleSensor.available() == false) //do we have new data?
  //     particleSensor.check(); //Check the sensor for new data
-
+    Temp_Read++;
+    if(Temp_Read==4)
+    { Temp_Read=0;
+      
+      Wire.beginTransmission(HDC1080_ADDR);
+      Wire.write(HDC1080_TEMP_REG);
+      Wire.endTransmission(false);
+      
+    }
     redBuffer[i] = particleSensor.getRed();
-  
     irBuffer[i] = particleSensor.getIR();
- 
+    delay(17);
+    if(Temp_Read==3)
+    {
+       Wire.requestFrom(HDC1080_ADDR,2);
+       uint16_t temp_r=0;
+       if(Wire.available()==2)
+       {temp_r=(Wire.read())<<8;
+        temp_r=temp_r+Wire.read();
+       
+       Resp_Temp[(i+200)>>2]=temp_r;
+       Serial.println(Resp_Temp[(i+600)>>2]); 
+       
+       }
+    }
     
  //   particleSensor.nextSample(); //We're finished with this sample so move to next sample
 
@@ -439,6 +487,8 @@ void loop()
     Serial.print(F(", ir="));
     Serial.println(irBuffer[i], DEC);
   }
+
+
 
   //calculate heart rate and SpO2 after first 100 samples (first 4 seconds of samples)
 //  maxim_heart_rate_and_oxygen_saturation(irBuffer, bufferLength, redBuffer, &spo2, &validSPO2, &heartRate, &validHeartRate);
@@ -506,7 +556,7 @@ void loop()
       redCurrent= particleSensor.getRed();
 
     spoiRead++;
-    if(spoiRead==1)
+    if(spoiRead==2)
     {   
 
 
@@ -553,7 +603,7 @@ void loop()
       
     }
 
-    if(spoiRead==2)
+    if(spoiRead==1)
     { 
       Wire.beginTransmission(HDC1080_ADDR);
       Wire.write(HDC1080_TEMP_REG);
@@ -570,14 +620,124 @@ void loop()
     
     }
     if(spoiRead==3)
-      {  
-         Wire.requestFrom(HDC1080_ADDR,2);
+      {  Resp_Temp_Count++;
+        if(Resp_Temp_Count==25)
+        {Resp_Temp_Count=0;
+         uint8_t Rise_Count=0;
+         uint8_t Fall_Count=0;
+         uint8_t Last_Fall=0;
+         uint8_t Last_Rise=0;
+         bool is_rising=0;
+         bool is_falling=0;
+         bool peak_found=0;
+         bool first_peak_valid=0;
+         bool second_peak_valid=0;
+         uint8_t first_peak_index=0;
+         uint8_t second_peak_index=0;
+         for(int i=0; i<199; i++)
+         {if(Resp_Temp[i+1]>Resp_Temp[i])
+          {
+            Rise_Count++;
+            Fall_Count=0;
+          }
+          else if(Resp_Temp[i+1]<Resp_Temp[i])
+          { Rise_Count=0;
+            Fall_Count++;      
+          }
+   /*      else
+          {if(!Rise_Count)
+           {Fall_Count++;}
+           else
+           {Rise_Count++;}
+            
+          } */
+          
+          if(is_rising && !Rise_Count && !peak_found)
+          {peak_found=1;
+           if(!first_peak_valid)
+           {first_peak_index=i;
+            peak_temp=Resp_Temp[i];
+           }
+           else
+           {second_peak_index=i;
+            if(Resp_Temp[i]>peak_temp)
+            {peak_temp=Resp_Temp[i];}
+           }    
+          }
+
+          if(peak_found && is_falling)
+          {if(!first_peak_valid)
+           {first_peak_valid=1;
+            peak_found=0;
+          //  Serial.print(first_peak_index);
+           }
+           else
+           {second_peak_valid=1;
+            peak_found=0;
+            break;
+           }
+            
+          }
+
+          if(peak_found && Fall_Count==0)
+          {peak_found=0;
+           Rise_Count=Last_Rise-Last_Fall;
+          }
+   
+          
+          if(Rise_Count>3)   // change to tune the peak detection
+          {is_rising=1;}
+          else
+          {is_rising=0;}
+
+          if(Fall_Count>2)   // change to tune the peak detection
+          {is_falling=1;}
+          else
+          {is_falling=0;}
+
+     
+
+    
+          
+          if(Fall_Count!=0)
+          {Last_Fall=Fall_Count;}
+          if(Rise_Count!=0)
+          {Last_Rise=Rise_Count;}
+/*
+          Serial.print(Rise_Count);
+          Serial.print(' ');
+          Serial.println(Fall_Count);
+          */
+          
+          
+         }
+
+         if(second_peak_index>first_peak_index)
+         { Resp_Rate_Buff=1500/(second_peak_index-first_peak_index);}//this is 2x resp rate.
+         else
+         {Resp_Rate_Buff=0;}
+    
+   
+         
+
+         
+          for (byte i = 25; i < 200; i++)
+          {
+           Resp_Temp[i - 25] = Resp_Temp[i];
+          }
+         
+          
+        }
+         
+       Wire.requestFrom(HDC1080_ADDR,2);
        uint16_t temp_r=0;
        if(Wire.available()==2)
        {temp_r=(Wire.read())<<8;
         temp_r=temp_r+Wire.read();
-       //Serial.println(temp_r); 
+     //  Serial.println(temp_r); 
        }
+       
+       Resp_Temp[Resp_Temp_Count+75]=temp_r;
         
         
         Wire.requestFrom(MCP9808_I2CADDR_A,2);
@@ -631,7 +791,7 @@ void loop()
     
    if(spoiPTR==spoiPTR_MAX)
     {spoiPTR=0;
-      
+ 
      // maxim_heart_rate_and_oxygen_saturation(irBuffer, bufferLength, redBuffer, &spo2, &validSPO2, &heartRate, &validHeartRate);
       rf_heart_rate_and_oxygen_saturation(irBuffer, bufferLength, redBuffer, &spo2, &validSPO2, &heartRate, &validHeartRate, &signalRatio, &signalCorel);
       for (byte i = spoiPTR_MAX; i < 200; i++)
@@ -650,7 +810,7 @@ void loop()
          {if(BLE_LAST_STAT == digitalRead(BLE_STAT_PIN))
           {while (BLE_Data_Read_RC!=BLE_Data_Write_RC)
            {
-          Serial1.print("{");
+           Serial1.print("{");
           Serial1.print('"');
           Serial1.print("tim");
           Serial1.print('"');
@@ -669,7 +829,7 @@ void loop()
         //fake data
           Normal_Mode_Data[BLE_Data_Read_RC].MOTION_LEVEL_S=3; //will be classified later by ACCELERO
           Normal_Mode_Data[BLE_Data_Read_RC].TEMP_S=63;  //will be calculate from three other temp
-          Normal_Mode_Data[BLE_Data_Read_RC].Resp_Rate_S=25;  //will be calculated from HDC1080 data
+         // Normal_Mode_Data[BLE_Data_Read_RC].Resp_Rate_S=25;  //will be calculated from HDC1080 data
           
 
          
@@ -692,7 +852,7 @@ void loop()
           Serial1.print("tem");
           Serial1.print('"');
           Serial1.print(':');
-          TEMP_tmp=(Normal_Mode_Data[BLE_Data_Read_RC].TEMP_S)/10+30;
+          TEMP_tmp=((float)(Normal_Mode_Data[BLE_Data_Read_RC].TEMP_S))/10.0+30.0;
           Serial1.print(TEMP_tmp, 1);
           Serial1.print(',');
 
@@ -701,8 +861,22 @@ void loop()
           Serial1.print("rr");
           Serial1.print('"');
           Serial1.print(':');
-           TEMP_tmp=(Normal_Mode_Data[BLE_Data_Read_RC].Resp_Rate_S)/2;
+           TEMP_tmp=((float)(Normal_Mode_Data[BLE_Data_Read_RC].Resp_Rate_S))/2.0;
           Serial1.print(TEMP_tmp, 1);
+            Serial1.print(',');
+
+           
+           uint16_t sensorValue = analogRead(A0);
+  // Convert the analog reading (which goes from 0 - 1023) to a voltage (0 - 5V):
+      //     float voltage = sensorValue * (5.0 / 1023.0);
+          TEMP_tmp= (sensorValue-593)/(859-593); // a rough estimation, but enough for this kind of applications
+                     // (Vbat-2.9V)/(4.2V-2.9V)
+
+          Serial1.print('"');
+          Serial1.print("bat");
+          Serial1.print('"');
+          Serial1.print(':');
+          Serial1.print(TEMP_tmp, 2);
 
           Serial1.print('}');
           Serial1.print("\r\n");
@@ -717,12 +891,12 @@ void loop()
           }
          }
    
-           
-
+          
            
            Normal_Mode_Data[BLE_Data_Write_RC].Heart_Rate_S=beatAvg;
            Normal_Mode_Data[BLE_Data_Write_RC].Second_Stamp_S=My_Time.Get_Stamp();
            Normal_Mode_Data[BLE_Data_Write_RC].SPO2_S=spo2;
+           Normal_Mode_Data[BLE_Data_Write_RC].Resp_Rate_S=Resp_Rate_Buff;
 
 
            BLE_Data_Write_RC++;
@@ -826,6 +1000,10 @@ void loop()
       beatAvg=beatsPerMinute;
       
     }
+    else
+    {
+      beatAvg=0;
+    }
   
 /*
       Serial.print(", HRPBA=");
@@ -905,10 +1083,9 @@ void loop()
          if(digitalRead(BLE_STAT_PIN) && digitalRead(3)) //BLE connected, send the data
          {if(BLE_LAST_STAT == digitalRead(BLE_STAT_PIN))
           {while (BLE_Data_Read_RC!=BLE_Data_Write_RC)
-           {
-         Serial1.print("{");
+           {   Serial1.print("{");
           Serial1.print('"');
-          Serial1.print("TIM");
+          Serial1.print("tim");
           Serial1.print('"');
           Serial1.print(':');
           Serial1.print(Normal_Mode_Data[BLE_Data_Read_RC].Second_Stamp_S, DEC);
@@ -916,7 +1093,7 @@ void loop()
 
           
           Serial1.print('"');
-          Serial1.print("SPO");
+          Serial1.print("spo");
           Serial1.print('"');
           Serial1.print(':');
           Serial1.print(Normal_Mode_Data[BLE_Data_Read_RC].SPO2_S, DEC);
@@ -925,12 +1102,12 @@ void loop()
         //fake data
           Normal_Mode_Data[BLE_Data_Read_RC].MOTION_LEVEL_S=3; //will be classified later by ACCELERO
           Normal_Mode_Data[BLE_Data_Read_RC].TEMP_S=63;  //will be calculate from three other temp
-          Normal_Mode_Data[BLE_Data_Read_RC].Resp_Rate_S=25;  //will be calculated from HDC1080 data
+         // Normal_Mode_Data[BLE_Data_Read_RC].Resp_Rate_S=25;  //will be calculated from HDC1080 data
           
 
          
           Serial1.print('"');
-          Serial1.print("HR");
+          Serial1.print("hr");
           Serial1.print('"');
           Serial1.print(':');
           Serial1.print(Normal_Mode_Data[BLE_Data_Read_RC].Heart_Rate_S, DEC);
@@ -938,26 +1115,26 @@ void loop()
           float TEMP_tmp;
 
           Serial1.print('"');
-          Serial1.print("MOT");
+          Serial1.print("mot");
           Serial1.print('"');
           Serial1.print(':');
           Serial1.print(Normal_Mode_Data[BLE_Data_Read_RC].MOTION_LEVEL_S, DEC);
           Serial1.print(',');
 
           Serial1.print('"');
-          Serial1.print("TEM");
+          Serial1.print("tem");
           Serial1.print('"');
           Serial1.print(':');
-          TEMP_tmp=(Normal_Mode_Data[BLE_Data_Read_RC].TEMP_S)/10+30;
+          TEMP_tmp=((float)(Normal_Mode_Data[BLE_Data_Read_RC].TEMP_S))/10.0+30.0;
           Serial1.print(TEMP_tmp, 1);
           Serial1.print(',');
 
 
           Serial1.print('"');
-          Serial1.print("RR");
+          Serial1.print("rr");
           Serial1.print('"');
           Serial1.print(':');
-           TEMP_tmp=(Normal_Mode_Data[BLE_Data_Read_RC].Resp_Rate_S)/2;
+           TEMP_tmp=((float)(Normal_Mode_Data[BLE_Data_Read_RC].Resp_Rate_S))/2.0;
           Serial1.print(TEMP_tmp, 1);
 
           Serial1.print('}');
@@ -1163,7 +1340,7 @@ struct PPG_List{
     {  if(digitalRead(BLE_STAT_PIN))
       {   Serial1.print('{');
          Serial1.print('"');
-          Serial1.print("Second");
+          Serial1.print("tim");
           Serial1.print('"');
           Serial1.print(':');
           Serial1.print(PPG_List_Ins.Second_Stamp);
@@ -1183,28 +1360,28 @@ struct PPG_List{
      //     delay(20);
 
           Serial1.print('"');
-          Serial1.print("I");
+          Serial1.print("i");
           Serial1.print('"');
           Serial1.print(':');
           Serial1.print(PPG_List_Ins.PPG_Sig[j].PPG_IR);
           Serial1.print(',');
 
           Serial1.print('"');
-          Serial1.print("R");
+          Serial1.print("r");
           Serial1.print('"');
           Serial1.print(':');
           Serial1.print(PPG_List_Ins.PPG_Sig[j].PPG_Red);
           Serial1.print(',');
 
           Serial1.print('"');
-          Serial1.print("X");
+          Serial1.print("x");
           Serial1.print('"');
           Serial1.print(':');
           Serial1.print(ACCEL_X_LIST[j>>1]);
           Serial1.print(',');
 
           Serial1.print('"');
-          Serial1.print("Y");
+          Serial1.print("y");
           Serial1.print('"');
           Serial1.print(':');
           Serial1.print(ACCEL_Y_LIST[j>>1]);
@@ -1212,28 +1389,28 @@ struct PPG_List{
 
           
           Serial1.print('"');
-          Serial1.print("Z");
+          Serial1.print("z");
           Serial1.print('"');
           Serial1.print(':');
           Serial1.print(ACCEL_Z_LIST[j>>1]);
            Serial1.print(',');
 
           Serial1.print('"');
-          Serial1.print("A");
+          Serial1.print("a");
           Serial1.print('"');
           Serial1.print(':');
           Serial1.print(TEMP_A[j/6]);
           Serial1.print(',');
 
           Serial1.print('"');
-          Serial1.print("B");
+          Serial1.print("b");
           Serial1.print('"');
           Serial1.print(':');
           Serial1.print(TEMP_B[j/6]);
           Serial1.print(',');
 
           Serial1.print('"');
-          Serial1.print("C");
+          Serial1.print("c");
           Serial1.print('"');
           Serial1.print(':');
           Serial1.print(TEMP_C[j/6]);
