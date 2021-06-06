@@ -3,6 +3,17 @@ import 'package:test_app/model/product.dart';
 import 'LocalNotificationManager.dart';
 import 'model/create_item.dart';
 import 'model/get_list.dart';
+import 'package:flutter_bluetooth_serial/flutter_bluetooth_serial.dart';
+import 'dart:async';
+import 'dart:convert';
+import 'package:flutter/services.dart';
+import 'dart:typed_data';
+import 'package:url_launcher/url_launcher.dart';
+
+
+
+
+
 
 class testNotificationScreen extends StatefulWidget {
   const testNotificationScreen({Key key}) : super(key: key);
@@ -11,7 +22,53 @@ class testNotificationScreen extends StatefulWidget {
   _FirstScreen createState() => _FirstScreen();
 }
 
+
+class _Message {
+  int whom;
+  String text;
+
+  _Message(this.whom, this.text);
+}
+
 class _FirstScreen extends State<testNotificationScreen> {
+  static final clientID = 0;
+  // Initializing the Bluetooth connection state to be unknown
+  BluetoothState _bluetoothState = BluetoothState.UNKNOWN;
+  // Initializing a global key, as it would help us in showing a SnackBar later
+  final GlobalKey<ScaffoldState> _scaffoldKey = new GlobalKey<ScaffoldState>();
+  // Get the instance of the Bluetooth
+  FlutterBluetoothSerial _bluetooth = FlutterBluetoothSerial.instance;
+  // Track the Bluetooth connection with the remote device
+  BluetoothConnection connection;
+
+  
+  final TextEditingController textEditingController =
+      new TextEditingController();
+  final ScrollController listScrollController = new ScrollController();
+
+  String _messageBuffer='';
+  List<_Message> messages = List<_Message>();
+
+  int _deviceState;
+
+  bool isDisconnecting = false;
+
+  Map<String, Color> colors = {
+    'onBorderColor': Colors.orangeAccent,
+    'offBorderColor': Colors.blueAccent,
+    'neutralBorderColor': Colors.transparent,
+    'onTextColor': Colors.green[700],
+    'offTextColor': Colors.red[700],
+    'neutralTextColor': Colors.blue,
+  };
+
+  bool get isConnected => connection != null && connection.isConnected;
+
+  // Define some variables, which will be required later
+  List<BluetoothDevice> _devicesList = [];
+  BluetoothDevice _device;
+  bool _connected = false;
+  bool _isButtonUnavailable = false;
 
   @override
   void initState() {
@@ -19,6 +76,86 @@ class _FirstScreen extends State<testNotificationScreen> {
     super.initState();
     localNotificationManager.setOnNotificationReceive(onNotificationReceive);
     localNotificationManager.setOnNotificationClick(onNotificationClick);
+
+    // Get current state
+    FlutterBluetoothSerial.instance.state.then((state) {
+      setState(() {
+        _bluetoothState = state;
+      });
+    });
+
+    _deviceState = 0; // neutral
+
+    // If the bluetooth of the device is not enabled,
+    // then request permission to turn on bluetooth
+    // as the app starts up
+    enableBluetooth();
+
+    // Listen for further state changes
+    FlutterBluetoothSerial.instance
+        .onStateChanged()
+        .listen((BluetoothState state) {
+      setState(() {
+        _bluetoothState = state;
+        if (_bluetoothState == BluetoothState.STATE_OFF) {
+          _isButtonUnavailable = true;
+        }
+        getPairedDevices();
+      });
+    });
+  }
+
+  @override
+  void dispose() {
+    // Avoid memory leak and disconnect
+    if (isConnected) {
+      isDisconnecting = true;
+      connection.dispose();
+      connection = null;
+    }
+
+    super.dispose();
+  }
+
+  // Request Bluetooth permission from the user
+  Future<void> enableBluetooth() async {
+    // Retrieving the current Bluetooth state
+    _bluetoothState = await FlutterBluetoothSerial.instance.state;
+
+    // If the bluetooth is off, then turn it on first
+    // and then retrieve the devices that are paired.
+    if (_bluetoothState == BluetoothState.STATE_OFF) {
+      await FlutterBluetoothSerial.instance.requestEnable();
+      await getPairedDevices();
+      return true;
+    } else {
+      await getPairedDevices();
+    }
+    return false;
+  }
+
+  // For retrieving and storing the paired devices
+  // in a list.
+  Future<void> getPairedDevices() async {
+    List<BluetoothDevice> devices = [];
+
+    // To get the list of paired devices
+    try {
+      devices = await _bluetooth.getBondedDevices();
+    } on PlatformException {
+      print("Error");
+    }
+
+    // It is an error to call [setState] unless [mounted] is true.
+    if (!mounted) {
+      return;
+    }
+
+    // Store the [devices] list in the [_devicesList] for accessing
+    // the list outside this class
+    setState(() {
+      _devicesList = devices;
+    });
   }
 
   onNotificationReceive(ReceiveNotification notification) {
@@ -29,10 +166,137 @@ class _FirstScreen extends State<testNotificationScreen> {
     print('Payload $payload ');
   }
 
+  // Create the List of devices to be shown in Dropdown Menu
+  List<DropdownMenuItem<BluetoothDevice>> _getDeviceItems() {
+    List<DropdownMenuItem<BluetoothDevice>> items = [];
+    if (_devicesList.isEmpty) {
+      items.add(DropdownMenuItem(
+        child: Text('NONE'),
+      ));
+    } else {
+      _devicesList.forEach((device) {
+        items.add(DropdownMenuItem(
+          child: Text(device.name),
+          value: device,
+        ));
+      });
+    }
+    return items;
+  }
 
+  // Method to connect to bluetooth
+  void _connect() async {
+    setState(() {
+      _isButtonUnavailable = true;
+    });
+    if (_device == null) {
+      show('No device selected');
+    } else {
+      if (!isConnected) {
+        await BluetoothConnection.toAddress(_device.address)
+            .then((_connection) {
+          print('Connected to the device');
+          show('Device connected');
+          connection = _connection;
+          setState(() {
+            _connected = true;
+          });
+
+          connection.input.listen(_onDataReceived).onDone(() {
+            if (isDisconnecting) {
+              print('Disconnecting locally!');
+            } else {
+              print('Disconnected remotely!');
+            }
+            if (this.mounted) {
+              setState(() {});
+            }
+          });
+        }).catchError((error) {
+          print('Cannot connect, exception occurred');
+          print(error);
+        });
+        
+
+        setState(() => _isButtonUnavailable = false);
+      }
+    }
+  }
+
+  void _disconnect() async {
+    setState(() {
+      _isButtonUnavailable = true;
+      _deviceState = 0;
+    });
+
+    await connection.close();
+    show('Device disconnected');
+    if (!connection.isConnected) {
+      setState(() {
+        _connected = false;
+        _isButtonUnavailable = false;
+      });
+    }
+  }
+
+  // Method to send message,
+  // for turning the Bluetooth device on
+  void _sendOnMessageToBluetooth() async {
+    connection.output.add(utf8.encode("1" + "\r\n"));
+    await connection.output.allSent;
+    show('Device Turned On');
+    setState(() {
+      _deviceState = 1; // device on
+    });
+  }
+
+  // Method to send message,
+  // for turning the Bluetooth device off
+  void _sendOffMessageToBluetooth() async {
+    connection.output.add(utf8.encode("0" + "\r\n"));
+    await connection.output.allSent;
+    show('Device Turned Off');
+    setState(() {
+      _deviceState = -1; // device off
+    });
+  }
+  Future show(
+  String message, {
+  Duration duration: const Duration(seconds: 3),
+    }) async {
+    await new Future.delayed(new Duration(milliseconds: 100));
+    _scaffoldKey.currentState.showSnackBar(
+      new SnackBar(
+        content: new Text(
+          message,
+        ),
+        duration: duration,
+      ),
+    );
+  }
+  
 
   @override
   Widget build(BuildContext context) {
+
+
+    final List<Text> list = messages.map((_message) {
+      return Text(
+                (text) {
+                  return text == '/shrug' ? '¯\\_(ツ)_/¯' : text;
+                }(_message.text.trim()),
+                style: TextStyle(color: Colors.black),
+      );
+    }).toList();
+
+    //var decodejson = Product.fromJson(list.last.data);
+
+    //String testrow="{" "\"heartrate\": \"85\", ""\"temperature\": \"1198\", ""\"movement\": \"active\", ""\"oxygenconc\": \"18\" }";
+    //createItem(data_db);
+    
+    
+                                                                        //inside should be the list.last
+    list.length == 0 ? print('nothing to upload') :  createItem(Product.fromJson(jsonDecode(list.last.data)));
 
     return DefaultTabController(
       length: 2,
@@ -54,9 +318,7 @@ class _FirstScreen extends State<testNotificationScreen> {
             labelColor: Colors.black,
             tabs: <Widget>[
               Tab(text: 'Real-Time'),
-              Tab(
-                text: 'Past-Data',
-              ),
+              Tab(text:'mode'),
             ],
           ),
         ),
@@ -66,141 +328,156 @@ class _FirstScreen extends State<testNotificationScreen> {
               padding: const EdgeInsets.all(20.0),
               child: Column(
                 children: [
-                  SizedBox(height: 10),
-                  Container(
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(14),
-                      color: Color(0xff4B4B87).withOpacity(.2),
-                    ),
-                  ),
-                  SizedBox(height: 20),
+                  SizedBox(height: 30),
                   Expanded(
                     child: GridView.count(
                       crossAxisCount: 2,
                       mainAxisSpacing: 20,
                       crossAxisSpacing: 20,
                       children: [
-                        //buildGridCard(
-                        //  title: "Heart Rate",
-                        //  color: Color(0xffff6968),
-                        //  lable1: '120 ',//need to read from aws
-                        //  lable2: 'bpm',
-                        //),
-
                         Container(
                           child: Column(children: [
                             Text('                 ',
-                                style:TextStyle(fontSize: 12.0)),
-                            Text('Heartrate               ',
-                                style: TextStyle(fontSize: 18.0,fontWeight: FontWeight.bold,color: Colors.white,),),
-                            Text('          ',
-                                style:TextStyle(fontSize: 25.0)),
-                            FutureBuilder(
-                              future: getProducts(),
-                              builder: (BuildContext context, AsyncSnapshot snapshot) {
-                                return Text("    "+
-                                    snapshot.data[snapshot.data.length-1].heartrate + " bpm",
-                                  style: TextStyle(fontSize: 30.0,fontWeight: FontWeight.bold,color: Colors.white,),); //update real heartrate
-                              })
-                            ]
-                          ),
+                                style: TextStyle(fontSize: 12.0)),
+                            Text(
+                              'Heartrate               ',
+                              style: TextStyle(
+                                fontSize: 18.0,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.white,
+                              ),
+                            ),
+                            Container(
+                              margin: EdgeInsets.only(top:20.0),
+                              child:Text(list.length == 0 ? 'Please' : Product.fromJson(jsonDecode(list.last.data)).heartrate,
+                                  style: TextStyle(
+                                  fontSize: 40.0,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.white,
+                                  ),
+                                ),
+                                ),
+                            Container(
+                              margin: EdgeInsets.only(top:15.0,left: 80),
+                              child:Text('bpm',
+                                  style: TextStyle(
+                                  fontSize: 25.0,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.white,
+                                  ),
+                                ),
+                                )
+                                
+                          ]),
                           decoration: BoxDecoration(
                             borderRadius: BorderRadius.circular(14),
                             color: Colors.pinkAccent,
                           ),
                         ),
-
-                        //buildGridCard(
-                        //  title: "Temperature",
-                        //  color: Color(0xff7A54FF),
-                        //  lable1: ' 37 ', //need to read from aws
-                        //  lable2: 'degree',
-                        //),
-
                         Container(
                           child: Column(children: [
                             Text('                 ',
-                                style:TextStyle(fontSize: 12.0)),
-                            Text('Temperature          ',
-                                style: TextStyle(fontSize: 18.0,fontWeight: FontWeight.bold,color: Colors.white,),),
-                            Text('          ',
-                                style:TextStyle(fontSize: 25.0)),
-                            FutureBuilder(
-                              future: getProducts(),
-                              builder: (BuildContext context,
-                                AsyncSnapshot snapshot) {
-                                return Text("  "+snapshot.data[snapshot.data.length-1].temperature + " degree",
-                                  style: TextStyle(fontSize: 30.0,fontWeight: FontWeight.bold,color: Colors.white,),); //update real heartrate
-                              })
-                            ]
-                          ),
+                                style: TextStyle(fontSize: 12.0)),
+                            Text(
+                              'Temperature          ',
+                              style: TextStyle(
+                                fontSize: 18.0,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.white,
+                              ),
+                            ),
+                            Container(
+                              margin: EdgeInsets.only(top:20.0),
+                              child:Text(list.length == 0 ? 'connect' : Product.fromJson(jsonDecode(list.last.data)).temperature,
+                                  style: TextStyle(
+                                  fontSize: 40.0,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.white,
+                                  ),
+                                ),
+                                ),
+                            Container(
+                              margin: EdgeInsets.only(top:15.0,left: 95),
+                              child:Text('°C',
+                                  style: TextStyle(
+                                  fontSize: 25.0,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.white,
+                                  ),
+                                ),
+                                )
+                          ]),
                           decoration: BoxDecoration(
                             borderRadius: BorderRadius.circular(14),
                             color: Color(0xff7A54FF),
                           ),
                         ),
-
-                        //buildGridCard(
-                        //  title: "Movement status:",
-                        //  color: Color(0xffFF8F61),
-                        //  lable1: 'Run', // need to read from aws
-                        //  lable2: '',
-                        //),
-
                         Container(
                           child: Column(children: [
                             Text('                 ',
-                                style:TextStyle(fontSize: 12.0)),
-                            Text('Movement status ',
-                                style: TextStyle(fontSize: 18.0,fontWeight: FontWeight.bold,color: Colors.white,),),
-                            Text('          ',
-                                style:TextStyle(fontSize: 25.0)),
-                            FutureBuilder(
-                              future: getProducts(),
-                              builder: (BuildContext context,
-                                AsyncSnapshot snapshot) {
-                                return Text("  "+snapshot.data[snapshot.data.length-1].movement + "",
-                                  style: TextStyle(fontSize: 40.0,fontWeight: FontWeight.bold,color: Colors.white,),); //update real heartrate
-                              })
-                            ]
-                          ),
+                                style: TextStyle(fontSize: 12.0)),
+                            Text(
+                              'Movement status ',
+                              style: TextStyle(
+                                fontSize: 18.0,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.white,
+                              ),
+                            ),
+                            Container(
+                              margin: EdgeInsets.only(top:20.0),
+                              child:Text(list.length == 0 ? 'the' : Product.fromJson(jsonDecode(list.last.data)).movement,
+                                  style: TextStyle(
+                                  fontSize: 40.0,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.white,
+                                  ),
+                                ),
+                                ),
+                          ]),
                           decoration: BoxDecoration(
                             borderRadius: BorderRadius.circular(14),
                             color: Color(0xffFF8F61),
                           ),
                         ),
-
-                        //buildGridCard(
-                        //  title: "Blood Oxygen",
-                        //  color: Color(0xff2AC3FF),
-                        //  lable1: '', //read from aws
-                        //  lable2: '',
-                        //),
-
                         Container(
                           child: Column(children: [
                             Text('                 ',
-                                style:TextStyle(fontSize: 12.0)),
-                            Text('Blood Oxygen Conc.',
-                                style: TextStyle(fontSize: 18.0,fontWeight: FontWeight.bold,color: Colors.white,),),
-                            Text('          ',
-                                style:TextStyle(fontSize: 25.0)),
-                            FutureBuilder(
-                              future: getProducts(),
-                              builder: (BuildContext context,
-                                AsyncSnapshot snapshot) {
-                                return Text("    "+snapshot.data[snapshot.data.length-1].oxygenconc + "",
-                                  style: TextStyle(fontSize: 35.0,fontWeight: FontWeight.bold,color: Colors.white,),); //update real heartrate
-                              })
-                            ]
-                          ),
+                                style: TextStyle(fontSize: 12.0)),
+                            Text(
+                              'Blood Oxygen Conc.',
+                              style: TextStyle(
+                                fontSize: 16.0,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.white,
+                              ),
+                            ),
+                            Container(
+                              margin: EdgeInsets.only(top:20.0),
+                              child:Text(list.length == 0 ? 'Mask' : Product.fromJson(jsonDecode(list.last.data)).oxygenconc,
+                                  style: TextStyle(
+                                  fontSize: 40.0,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.white,
+                                  ),
+                                ),
+                                ),
+                            Container(
+                              margin: EdgeInsets.only(top:15.0,left: 95),
+                              child:Text('%',
+                                  style: TextStyle(
+                                  fontSize: 25.0,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.white,
+                                  ),
+                                ),
+                                )
+                          ]),
                           decoration: BoxDecoration(
                             borderRadius: BorderRadius.circular(14),
                             color: Color(0xff2AC3FF),
                           ),
                         ),
-
-
                         buildGridCard(
                           title: "Battery",
                           color: Colors.greenAccent,
@@ -208,65 +485,194 @@ class _FirstScreen extends State<testNotificationScreen> {
                           lable2: '%',
                         ),
                         Container(
-                          child: RouteButton(),
-                          //  child: FutureBuilder(
-                          //    future: getProducts(),
-                          //    builder: (BuildContext context, AsyncSnapshot snapshot){
-                          //      return Text(snapshot.data[0].movement);
-                          //    }
-                          // ),
-                        ),
+                          child:RouteButtonToGrafana(),
+                          ),
                       ],
                     ),
                   ),
                 ],
               ),
             ),
-            Padding(
-              padding: const EdgeInsets.all(20.0),
-              child: Column(
-                children: [
-                  SizedBox(height: 10),
+         Container(
+          child: Column(
+            mainAxisSize: MainAxisSize.max,
+            children: <Widget>[
+              Visibility(
+                visible: _isButtonUnavailable &&
+                    _bluetoothState == BluetoothState.STATE_ON,
+                child: LinearProgressIndicator(
+                  backgroundColor: Colors.yellow,
+                  valueColor: AlwaysStoppedAnimation<Color>(Colors.red),
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.all(20),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.start,
+                  children: <Widget>[
+                    Expanded(
+                      child: Text(
+                        'Enable Bluetooth',
+                        style: TextStyle(
+                          color: Colors.black,
+                          fontSize: 16,
+                        ),
+                      ),
+                    ),
+                    Switch(
+                      value: _bluetoothState.isEnabled,
+                      onChanged: (bool value) {
+                        future() async {
+                          if (value) {
+                            await FlutterBluetoothSerial.instance
+                                .requestEnable();
+                          } else {
+                            await FlutterBluetoothSerial.instance
+                                .requestDisable();
+                          }
+
+                          await getPairedDevices();
+                          _isButtonUnavailable = false;
+
+                          if (_connected) {
+                            _disconnect();
+                          }
+                        }
+
+                        future().then((_) {
+                          setState(() {});
+                        });
+                      },
+                    )
+                  ],
+                ),
+              ),
+              Stack(
+                children: <Widget>[
+                  Column(
+                    children: <Widget>[
+                      Padding(
+                        padding: const EdgeInsets.only(top: 20),
+                        child: Text(
+                          "PAIRED DEVICES",
+                          style: TextStyle(fontSize: 24, color: Colors.blue),
+                          textAlign: TextAlign.center,
+                        ),
+                      ),
+                      Padding(
+                        padding: const EdgeInsets.all(8.0),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: <Widget>[
+                            Text(
+                              'Device:',
+                              style: TextStyle(
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            DropdownButton(
+                              items: _getDeviceItems(),
+                              onChanged: (value) =>
+                                  setState(() => _device = value),
+                              value: _devicesList.isNotEmpty ? _device : null,
+                            ),
+                            RaisedButton(
+                              onPressed: _isButtonUnavailable
+                                  ? null
+                                  : _connected ? _disconnect : _connect,
+                              child:
+                                  Text(_connected ? 'Disconnect' : 'Connect'),
+                            ),
+                          ],
+                        ),
+                      ),
+                      Padding(
+                        padding: const EdgeInsets.all(16.0),
+                        child: Card(
+                          shape: RoundedRectangleBorder(
+                            side: new BorderSide(
+                              color: _deviceState == 0
+                                  ? colors['neutralBorderColor']
+                                  : _deviceState == 1
+                                      ? colors['onBorderColor']
+                                      : colors['offBorderColor'],
+                              width: 3,
+                            ),
+                            borderRadius: BorderRadius.circular(4.0),
+                          ),
+                          elevation: _deviceState == 0 ? 4 : 0,
+                          child: Padding(
+                            padding: const EdgeInsets.all(8.0),
+                            child: Row(
+                              children: <Widget>[
+                                Expanded(
+                                  child: Text(
+                                    "Perference",
+                                    style: TextStyle(
+                                      fontSize: 20,
+                                      color: _deviceState == 0
+                                          ? colors['neutralTextColor']
+                                          : _deviceState == 1
+                                              ? colors['onTextColor']
+                                              : colors['offTextColor'],
+                                    ),
+                                  ),
+                                ),
+                                FlatButton(
+                                  onPressed: _connected
+                                      ? _sendOnMessageToBluetooth
+                                      : null,
+                                  child: Text("High update"),
+                                ),
+                                FlatButton(
+                                  onPressed: _connected
+                                      ? _sendOffMessageToBluetooth
+                                      : null,
+                                  child: Text("Low update"),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
                   Container(
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(14),
-                      color: Color(0xff4B4B87).withOpacity(.2),
-                    ),
+                    color: Colors.blue,
                   ),
-                  SizedBox(height: 20),
-                  Expanded(
-                    child: GridView.count(
-                      crossAxisCount: 2,
-                      mainAxisSpacing: 20,
-                      crossAxisSpacing: 20,
-                      children: [
-                        Container(
-                          child: RouteButtonToHeartRateAnalysis(),
+                ],
+              ),
+              Expanded(
+                child: Padding(
+                  padding: const EdgeInsets.all(20),
+                  child: Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: <Widget>[
+                        Text(
+                          "NOTE: If you cannot find the device in the list, please pair the device by going to the bluetooth settings",
+                          style: TextStyle(
+                            fontSize: 15,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.red,
+                          ),
                         ),
-                        Container(
-                          child: RouteButtonToStressAnalysis(),
-                        ),
-                        Container(
-                          child: RouteButtonToMovementHistory(),
-                        ),
-                        Container(
-                          child: RouteButtonToBodyTemp(),
-                        ),
-                        buildGridCard(
-                          title: "Battery",
-                          color: Colors.greenAccent,
-                          lable1: '100',
-                          lable2: '%',
-                        ),
-                        Container(
-                          child: RouteButton(),
+                        SizedBox(height: 15),
+                        RaisedButton(
+                          elevation: 2,
+                          child: Text("Bluetooth Settings"),
+                          onPressed: () {
+                            FlutterBluetoothSerial.instance.openSettings();
+                          },
                         ),
                       ],
                     ),
                   ),
-                ],
-              ),
-            ),
+                ),
+              )
+            ],
+          ),
+        ),
           ],
         ),
         floatingActionButton: FloatingActionButton(
@@ -278,6 +684,9 @@ class _FirstScreen extends State<testNotificationScreen> {
       ),
     );
   }
+
+
+      
 
   Widget buildGridCard({
     String title,
@@ -333,89 +742,65 @@ class _FirstScreen extends State<testNotificationScreen> {
       ),
     );
   }
-}
+  void _onDataReceived(Uint8List data) {
+    // Allocate buffer for parsed data
+    int backspacesCounter = 0;
+    data.forEach((byte) {
+      if (byte == 8 || byte == 127) {
+        backspacesCounter++;
+      }
+    });
+    Uint8List buffer = Uint8List(data.length - backspacesCounter);
+    int bufferIndex = buffer.length;
 
-class RouteButton extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    return ElevatedButton(
-      onPressed: () {
-        _navigateToSecondScreen(context);
-      },
-      child: Text(
-        'Mode Choose',
-        style: TextStyle(fontSize: 25, fontWeight: FontWeight.bold),
-      ), //text to be read from aws
-      style: ElevatedButton.styleFrom(
-        primary: Colors.black,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(14),
-        ),
-      ),
-    );
-  }
+    // Apply backspace control character
+    backspacesCounter = 0;
+    for (int i = data.length - 1; i >= 0; i--) {
+      if (data[i] == 8 || data[i] == 127) {
+        backspacesCounter++;
+      } else {
+        if (backspacesCounter > 0) {
+          backspacesCounter--;
+        } else {
+          buffer[--bufferIndex] = data[i];
+        }
+      }
+    }
 
-  _navigateToSecondScreen(BuildContext context) async {
-    final result = await Navigator.push(
-        context, MaterialPageRoute(builder: (context) => SecondScreen()));
-
-    Scaffold.of(context).showSnackBar(SnackBar(content: Text('$result')));
-  }
-}
-
-class SecondScreen extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-        appBar: AppBar(title: Text('change strategy of detection')),
-        body: Center(
-            child: Row(children: <Widget>[
-          Container(
-            height: 810.0,
-            width: 196.0,
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(14),
-              color: Color(0xff4B4B87).withOpacity(.2),
-            ),
-            child: ElevatedButton(
-              child: Text('Fast', style: TextStyle(fontSize: 20.0)),
-              style: ElevatedButton.styleFrom(
-                primary: Colors.deepOrangeAccent,
-              ),
-              onPressed: () {
-                Navigator.pop(context, 'Mode set to: High update frequency');
-              },
-            ),
+    // Create message if there is new line character
+    String dataString = String.fromCharCodes(buffer);
+    int index = buffer.indexOf(13);
+    if (~index != 0) {
+      setState(() {
+        messages.add(
+          _Message(
+            1,
+            backspacesCounter > 0
+                ? _messageBuffer.substring(
+                    0, _messageBuffer.length - backspacesCounter)
+                : _messageBuffer + dataString.substring(0, index),
           ),
-          Container(
-            height: 810.0,
-            width: 196.0,
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(14),
-              color: Color(0xff4B4B87).withOpacity(.2),
-            ),
-            child: ElevatedButton(
-              child: Text('Slow', style: TextStyle(fontSize: 20.0)),
-              style: ElevatedButton.styleFrom(
-                primary: Colors.lightBlueAccent,
-              ),
-              onPressed: () {
-                Navigator.pop(context, 'Mode set to: Slow update frequency');
-              },
-            ),
-          )
-        ])));
+        );
+        _messageBuffer = dataString.substring(index);
+      });
+    } else {
+      _messageBuffer = (backspacesCounter > 0
+          ? _messageBuffer.substring(
+              0, _messageBuffer.length - backspacesCounter)
+          : _messageBuffer + dataString);
+    }
   }
 }
 
-class RouteButtonToStressAnalysis extends StatelessWidget {
+
+class RouteButtonToGrafana extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return ElevatedButton(
       onPressed: () {
-        _navigateToStressAnalysis(context);
+        launch('https://jirui.grafana.net/goto/16pqT06Gz');
       },
-      child: Text('Your Stress Analysis',
+      child: Text('Grafana Data',
           style: TextStyle(fontSize: 20.0, fontWeight: FontWeight.bold)),
       style: ElevatedButton.styleFrom(
           primary: Color(0xFF7CB0E5),
@@ -425,120 +810,5 @@ class RouteButtonToStressAnalysis extends StatelessWidget {
     );
   }
 
-  _navigateToStressAnalysis(BuildContext context) async {
-    final result = await Navigator.push(
-        context, MaterialPageRoute(builder: (context) => StressScreen()));
-  }
 }
 
-class RouteButtonToHeartRateAnalysis extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    return ElevatedButton(
-      onPressed: () {
-        _navigateToHeartRateAnalysis(context);
-      },
-      child: Text('Your Heart Rate Analysis',
-          style: TextStyle(fontSize: 20.0, fontWeight: FontWeight.bold)),
-      style: ElevatedButton.styleFrom(
-          primary: Color(0xffff6968),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(14),
-          )),
-    );
-  }
-
-  _navigateToHeartRateAnalysis(BuildContext context) async {
-    final result = await Navigator.push(
-        context, MaterialPageRoute(builder: (context) => HeartRateScreen()));
-  }
-}
-
-class RouteButtonToMovementHistory extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    return ElevatedButton(
-      onPressed: () {
-        _navigateToMovementHistory(context);
-      },
-      child: Text('Your Movement History',
-          style: TextStyle(fontSize: 20.0, fontWeight: FontWeight.bold)),
-      style: ElevatedButton.styleFrom(
-          primary: Colors.indigoAccent,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(14),
-          )),
-    );
-  }
-
-  _navigateToMovementHistory(BuildContext context) async {
-    final result = await Navigator.push(
-        context, MaterialPageRoute(builder: (context) => MovementScreen()));
-  }
-}
-
-class RouteButtonToBodyTemp extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    return ElevatedButton(
-      onPressed: () {
-        _navigateToBodyTemp(context);
-      },
-      child: Text('Your Body Temperature History',
-          style: TextStyle(fontSize: 20.0, fontWeight: FontWeight.bold)),
-      style: ElevatedButton.styleFrom(
-          primary: Color(0xffFF8F61),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(14),
-          )),
-    );
-  }
-
-  _navigateToBodyTemp(BuildContext context) async {
-    final result = await Navigator.push(
-        context, MaterialPageRoute(builder: (context) => BodyTempScreen()));
-  }
-}
-
-class StressScreen extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-        appBar: AppBar(title: Text('Your Stress Analysis')),
-        body: Center(
-            child: Text(
-                'Chart of stress analysis is supposed to be placed here')));
-  }
-}
-
-class HeartRateScreen extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-        appBar: AppBar(title: Text('Your Heart Rate Analysis')),
-        body: Center(child: Text('chart of heart rate analysis')));
-  }
-}
-
-class MovementScreen extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-        appBar: AppBar(title: Text('Your Movement History')),
-        body: Center(
-            child: Text(
-                'Chart of movement history is supposed to be placed here')));
-  }
-}
-
-class BodyTempScreen extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-        appBar: AppBar(title: Text('Your Body Temperature History')),
-        body: Center(
-          child:
-              Text('Chart of body temp history is supposed to be placed here'),
-        ));
-  }
-}
