@@ -158,7 +158,6 @@ uint16_t Stress_Refresh_Count=3599;
 uint8_t NextSecond=0; //the alarm will take place when time change to the next second.
 
 
-
 struct Data_Set{
   uint32_t Second_Stamp_S;
   uint8_t Heart_Rate_S;
@@ -218,11 +217,6 @@ int16_t TEMP_C[PPG_List_Length/6];
 uint16_t HDC1080_VAL;
 
 uint8_t spoiPTR_MAX=50;  //25 1 data/s, 50, 1 data/2s..... 100, 1 data/4s..  Total data storage = 1000.
-
-uint16_t Resp_Temp[100];
-uint8_t Resp_Temp_Count=0;
-uint8_t Resp_Rate_Buff=0;
-uint16_t peak_temp=0;
 
 
 void setup()
@@ -426,58 +420,17 @@ void loop()
   
   My_Time.To_Stamp(2021, 5, 23, 9, 16, 0);
   //Serial.println(HDC1080_VAL);
-
-
-  for(int i=50; i<100; i++)
-{  Wire.beginTransmission(HDC1080_ADDR);
-   Wire.write(HDC1080_TEMP_REG);
-   Wire.endTransmission(false);
-   delay(79);
-    Wire.requestFrom(HDC1080_ADDR,2);
-       uint16_t temp_r=0;
-       if(Wire.available()==2)
-       {temp_r=(Wire.read())<<8;
-        temp_r=temp_r+Wire.read();
-       
-       Resp_Temp[i]=temp_r;
-       Serial.println(Resp_Temp[i]); 
-       
-       }
-      
-
   
-}
-  
- uint8_t Temp_Read=3;
+
   for (byte i = 0 ; i < bufferLength ; i++)
   {
  //   while (particleSensor.available() == false) //do we have new data?
  //     particleSensor.check(); //Check the sensor for new data
-    Temp_Read++;
-    if(Temp_Read==4)
-    { Temp_Read=0;
-      
-      Wire.beginTransmission(HDC1080_ADDR);
-      Wire.write(HDC1080_TEMP_REG);
-      Wire.endTransmission(false);
-      
-    }
+
     redBuffer[i] = particleSensor.getRed();
+  
     irBuffer[i] = particleSensor.getIR();
-    delay(17);
-    if(Temp_Read==3)
-    {
-       Wire.requestFrom(HDC1080_ADDR,2);
-       uint16_t temp_r=0;
-       if(Wire.available()==2)
-       {temp_r=(Wire.read())<<8;
-        temp_r=temp_r+Wire.read();
-       
-       Resp_Temp[(i+200)>>2]=temp_r;
-       Serial.println(Resp_Temp[(i+200)>>2]); 
-       
-       }
-    }
+ 
     
  //   particleSensor.nextSample(); //We're finished with this sample so move to next sample
 
@@ -486,8 +439,6 @@ void loop()
     Serial.print(F(", ir="));
     Serial.println(irBuffer[i], DEC);
   }
-
-
 
   //calculate heart rate and SpO2 after first 100 samples (first 4 seconds of samples)
 //  maxim_heart_rate_and_oxygen_saturation(irBuffer, bufferLength, redBuffer, &spo2, &validSPO2, &heartRate, &validHeartRate);
@@ -555,7 +506,7 @@ void loop()
       redCurrent= particleSensor.getRed();
 
     spoiRead++;
-    if(spoiRead==2)
+    if(spoiRead==1)
     {   
 
 
@@ -602,7 +553,7 @@ void loop()
       
     }
 
-    if(spoiRead==1)
+    if(spoiRead==2)
     { 
       Wire.beginTransmission(HDC1080_ADDR);
       Wire.write(HDC1080_TEMP_REG);
@@ -619,124 +570,14 @@ void loop()
     
     }
     if(spoiRead==3)
-      {  Resp_Temp_Count++;
-        if(Resp_Temp_Count==25)
-        {Resp_Temp_Count=0;
-         uint8_t Rise_Count=0;
-         uint8_t Fall_Count=0;
-         uint8_t Last_Fall=0;
-         uint8_t Last_Rise=0;
-         bool is_rising=0;
-         bool is_falling=0;
-         bool peak_found=0;
-         bool first_peak_valid=0;
-         bool second_peak_valid=0;
-         uint8_t first_peak_index=0;
-         uint8_t second_peak_index=0;
-         for(int i=0; i<99; i++)
-         {if(Resp_Temp[i+1]>Resp_Temp[i])
-          {
-            Rise_Count++;
-            Fall_Count=0;
-          }
-          else if(Resp_Temp[i+1]<Resp_Temp[i])
-          { Rise_Count=0;
-            Fall_Count++;      
-          }
-   /*      else
-          {if(!Rise_Count)
-           {Fall_Count++;}
-           else
-           {Rise_Count++;}
-            
-          } */
-          
-          if(is_rising && !Rise_Count && !peak_found)
-          {peak_found=1;
-           if(!first_peak_valid)
-           {first_peak_index=i;
-            peak_temp=Resp_Temp[i];
-           }
-           else
-           {second_peak_index=i;
-            if(Resp_Temp[i]>peak_temp)
-            {peak_temp=Resp_Temp[i];}
-           }    
-          }
-
-          if(peak_found && is_falling)
-          {if(!first_peak_valid)
-           {first_peak_valid=1;
-            peak_found=0;
-          //  Serial.print(first_peak_index);
-           }
-           else
-           {second_peak_valid=1;
-            peak_found=0;
-            break;
-           }
-            
-          }
-
-          if(peak_found && Fall_Count==0)
-          {peak_found=0;
-           Rise_Count=Last_Rise-Last_Fall;
-          }
-   
-          
-          if(Rise_Count>2)   // change to tune the peak detection
-          {is_rising=1;}
-          else
-          {is_rising=0;}
-
-          if(Fall_Count>2)   // change to tune the peak detection
-          {is_falling=1;}
-          else
-          {is_falling=0;}
-
-     
-
-    
-          
-          if(Fall_Count!=0)
-          {Last_Fall=Fall_Count;}
-          if(Rise_Count!=0)
-          {Last_Rise=Rise_Count;}
-/*
-          Serial.print(Rise_Count);
-          Serial.print(' ');
-          Serial.println(Fall_Count);
-          */
-          
-          
-         }
-
-         if(second_peak_index>first_peak_index)
-         { Resp_Rate_Buff=1500/(second_peak_index-first_peak_index);}//this is 2x resp rate.
-         else
-         {Resp_Rate_Buff=0;}
-    
-   
-         
-
-         
-          for (byte i = 25; i < 100; i++)
-          {
-           Resp_Temp[i - 25] = Resp_Temp[i];
-          }
-         
-          
-        }
-         
-       Wire.requestFrom(HDC1080_ADDR,2);
+      {  
+         Wire.requestFrom(HDC1080_ADDR,2);
        uint16_t temp_r=0;
        if(Wire.available()==2)
        {temp_r=(Wire.read())<<8;
         temp_r=temp_r+Wire.read();
-     //  Serial.println(temp_r); 
+       //Serial.println(temp_r); 
        }
-       
-       Resp_Temp[Resp_Temp_Count+75]=temp_r;
         
         
         Wire.requestFrom(MCP9808_I2CADDR_A,2);
@@ -809,111 +650,61 @@ void loop()
          {if(BLE_LAST_STAT == digitalRead(BLE_STAT_PIN))
           {while (BLE_Data_Read_RC!=BLE_Data_Write_RC)
            {
+          Serial1.print("{");
           Serial1.print('"');
-          Serial1.print('{');
-          Serial1.print('"');
-          Serial1.print('"');
-          Serial1.print('\\');
-          Serial1.print('"');
-          Serial1.print("TIM");
-           Serial1.print('\\');
+          Serial1.print("tim");
           Serial1.print('"');
           Serial1.print(':');
-          Serial1.print('\\');
-          Serial1.print('"');
           Serial1.print(Normal_Mode_Data[BLE_Data_Read_RC].Second_Stamp_S, DEC);
-          Serial1.print('\\');
-          Serial1.print('"');
           Serial1.print(',');
 
           
-        
           Serial1.print('"');
-          Serial1.print('"');
-          Serial1.print('\\');
-          Serial1.print('"');
-          Serial1.print("SPO");
-              Serial1.print('\\');
+          Serial1.print("spo");
           Serial1.print('"');
           Serial1.print(':');
-          Serial1.print('\\');
-          Serial1.print('"');
-       
           Serial1.print(Normal_Mode_Data[BLE_Data_Read_RC].SPO2_S, DEC);
-             Serial1.print('\\');
-          Serial1.print('"');
           Serial1.print(',');
 
         //fake data
           Normal_Mode_Data[BLE_Data_Read_RC].MOTION_LEVEL_S=3; //will be classified later by ACCELERO
           Normal_Mode_Data[BLE_Data_Read_RC].TEMP_S=63;  //will be calculate from three other temp
-     //     Normal_Mode_Data[BLE_Data_Read_RC].Resp_Rate_S=25;  //will be calculated from HDC1080 data
+          Normal_Mode_Data[BLE_Data_Read_RC].Resp_Rate_S=25;  //will be calculated from HDC1080 data
           
 
          
           Serial1.print('"');
-          Serial1.print('"');
-          Serial1.print('\\');
-          Serial1.print('"');
-          Serial1.print("HR");
-             Serial1.print('\\');
+          Serial1.print("hr");
           Serial1.print('"');
           Serial1.print(':');
-             Serial1.print('\\');
-          Serial1.print('"');
           Serial1.print(Normal_Mode_Data[BLE_Data_Read_RC].Heart_Rate_S, DEC);
-             Serial1.print('\\');
-          Serial1.print('"');
           Serial1.print(',');
           float TEMP_tmp;
 
-            Serial1.print('"');
           Serial1.print('"');
-          Serial1.print('\\');
-          Serial1.print('"');
-          Serial1.print("MOT");
-            Serial1.print('\\');
+          Serial1.print("mot");
           Serial1.print('"');
           Serial1.print(':');
-              Serial1.print('\\');
-          Serial1.print('"');
           Serial1.print(Normal_Mode_Data[BLE_Data_Read_RC].MOTION_LEVEL_S, DEC);
-              Serial1.print('\\');
-          Serial1.print('"');
           Serial1.print(',');
 
-               Serial1.print('"');
           Serial1.print('"');
-          Serial1.print('\\');
-          Serial1.print('"');
-          Serial1.print("TEM");
-                Serial1.print('\\');
+          Serial1.print("tem");
           Serial1.print('"');
           Serial1.print(':');
-                Serial1.print('\\');
-          Serial1.print('"');
-          TEMP_tmp=((float)(Normal_Mode_Data[BLE_Data_Read_RC].TEMP_S))/10.0+30.0;
+          TEMP_tmp=(Normal_Mode_Data[BLE_Data_Read_RC].TEMP_S)/10+30;
           Serial1.print(TEMP_tmp, 1);
-              Serial1.print('\\');
-          Serial1.print('"');
+          Serial1.print(',');
+
 
           Serial1.print('"');
-          Serial1.print('"');
-          Serial1.print('\\');
-          Serial1.print('"');
-          Serial1.print("RR");
-            Serial1.print('\\');
+          Serial1.print("rr");
           Serial1.print('"');
           Serial1.print(':');
-            Serial1.print('\\');
-          Serial1.print('"');
-           TEMP_tmp=((float)(Normal_Mode_Data[BLE_Data_Read_RC].Resp_Rate_S))/2.0;
+           TEMP_tmp=(Normal_Mode_Data[BLE_Data_Read_RC].Resp_Rate_S)/2;
           Serial1.print(TEMP_tmp, 1);
-            Serial1.print('\\');
-          Serial1.print('"');
 
           Serial1.print('}');
-          Serial1.print('"');
           Serial1.print("\r\n");
           BLE_Data_Read_RC++;
            if(BLE_Data_Read_RC>=Data_Set_Length_Max)
@@ -932,8 +723,6 @@ void loop()
            Normal_Mode_Data[BLE_Data_Write_RC].Heart_Rate_S=beatAvg;
            Normal_Mode_Data[BLE_Data_Write_RC].Second_Stamp_S=My_Time.Get_Stamp();
            Normal_Mode_Data[BLE_Data_Write_RC].SPO2_S=spo2;
-
-           Normal_Mode_Data[BLE_Data_Write_RC].Resp_Rate_S=Resp_Rate_Buff;
 
 
            BLE_Data_Write_RC++;
@@ -1037,10 +826,6 @@ void loop()
       beatAvg=beatsPerMinute;
       
     }
-    else
-    {
-      beatAvg=0;
-    }
   
 /*
       Serial.print(", HRPBA=");
@@ -1121,111 +906,61 @@ void loop()
          {if(BLE_LAST_STAT == digitalRead(BLE_STAT_PIN))
           {while (BLE_Data_Read_RC!=BLE_Data_Write_RC)
            {
-           Serial1.print('"');
-          Serial1.print('{');
-          Serial1.print('"');
-          Serial1.print('"');
-          Serial1.print('\\');
+         Serial1.print("{");
           Serial1.print('"');
           Serial1.print("TIM");
-           Serial1.print('\\');
           Serial1.print('"');
           Serial1.print(':');
-          Serial1.print('\\');
-          Serial1.print('"');
           Serial1.print(Normal_Mode_Data[BLE_Data_Read_RC].Second_Stamp_S, DEC);
-          Serial1.print('\\');
-          Serial1.print('"');
           Serial1.print(',');
 
           
-        
-          Serial1.print('"');
-          Serial1.print('"');
-          Serial1.print('\\');
           Serial1.print('"');
           Serial1.print("SPO");
-              Serial1.print('\\');
           Serial1.print('"');
           Serial1.print(':');
-          Serial1.print('\\');
-          Serial1.print('"');
-       
           Serial1.print(Normal_Mode_Data[BLE_Data_Read_RC].SPO2_S, DEC);
-             Serial1.print('\\');
-          Serial1.print('"');
           Serial1.print(',');
 
         //fake data
           Normal_Mode_Data[BLE_Data_Read_RC].MOTION_LEVEL_S=3; //will be classified later by ACCELERO
           Normal_Mode_Data[BLE_Data_Read_RC].TEMP_S=63;  //will be calculate from three other temp
-     //     Normal_Mode_Data[BLE_Data_Read_RC].Resp_Rate_S=25;  //will be calculated from HDC1080 data
+          Normal_Mode_Data[BLE_Data_Read_RC].Resp_Rate_S=25;  //will be calculated from HDC1080 data
           
 
          
           Serial1.print('"');
-          Serial1.print('"');
-          Serial1.print('\\');
-          Serial1.print('"');
           Serial1.print("HR");
-             Serial1.print('\\');
           Serial1.print('"');
           Serial1.print(':');
-             Serial1.print('\\');
-          Serial1.print('"');
           Serial1.print(Normal_Mode_Data[BLE_Data_Read_RC].Heart_Rate_S, DEC);
-             Serial1.print('\\');
-          Serial1.print('"');
           Serial1.print(',');
           float TEMP_tmp;
 
-            Serial1.print('"');
-          Serial1.print('"');
-          Serial1.print('\\');
           Serial1.print('"');
           Serial1.print("MOT");
-            Serial1.print('\\');
           Serial1.print('"');
           Serial1.print(':');
-              Serial1.print('\\');
-          Serial1.print('"');
           Serial1.print(Normal_Mode_Data[BLE_Data_Read_RC].MOTION_LEVEL_S, DEC);
-              Serial1.print('\\');
-          Serial1.print('"');
           Serial1.print(',');
 
-               Serial1.print('"');
-          Serial1.print('"');
-          Serial1.print('\\');
           Serial1.print('"');
           Serial1.print("TEM");
-                Serial1.print('\\');
           Serial1.print('"');
           Serial1.print(':');
-                Serial1.print('\\');
-          Serial1.print('"');
-          TEMP_tmp=((float)(Normal_Mode_Data[BLE_Data_Read_RC].TEMP_S))/10.0+30.0;
+          TEMP_tmp=(Normal_Mode_Data[BLE_Data_Read_RC].TEMP_S)/10+30;
           Serial1.print(TEMP_tmp, 1);
-              Serial1.print('\\');
-          Serial1.print('"');
+          Serial1.print(',');
 
-          Serial1.print('"');
-          Serial1.print('"');
-          Serial1.print('\\');
+
           Serial1.print('"');
           Serial1.print("RR");
-            Serial1.print('\\');
           Serial1.print('"');
           Serial1.print(':');
-            Serial1.print('\\');
-          Serial1.print('"');
-           TEMP_tmp=((float)(Normal_Mode_Data[BLE_Data_Read_RC].Resp_Rate_S))/2.0;
+           TEMP_tmp=(Normal_Mode_Data[BLE_Data_Read_RC].Resp_Rate_S)/2;
           Serial1.print(TEMP_tmp, 1);
-            Serial1.print('\\');
-          Serial1.print('"');
 
           Serial1.print('}');
-          Serial1.print('"');
           Serial1.print("\r\n");
           BLE_Data_Read_RC++;
            if(BLE_Data_Read_RC>=Data_Set_Length_Max)
