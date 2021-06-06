@@ -7,7 +7,7 @@ Future<void> createItem(Product product) async {
   return http
       .post(url,
           body: "{" +
-              "\"time\": \"${product.tim}\", "
+              "\"tim\": \"${product.tim}\", "
                   "\"heartrate\": \"${product.heartrate}\", "
                   "\"temperature\": \"${product.temperature}\", "
                   "\"movement\": \"${product.movement}\", "
