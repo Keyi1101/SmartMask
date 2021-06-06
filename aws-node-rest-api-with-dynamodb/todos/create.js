@@ -23,10 +23,13 @@ module.exports.create = (event, context, callback) => {
     TableName: "test",
     Item: {
       ID: uuid.v1(),
+      time: data.tim,
       heartrate: data.heartrate,
       temperature: data.temperature,
       movement: data.movement,
-      oxygenconc: data.oxygenconc  
+      oxygenconc: data.oxygenconc,
+      r2r: data.rr
+   
     },
   };
   // write the todo to the database
