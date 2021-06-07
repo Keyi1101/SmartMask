@@ -296,7 +296,8 @@ class _FirstScreen extends State<testNotificationScreen> {
     
     
                                                                         //inside should be the list.last
-    list.length == 0 ? print('nothing to upload') :  createItem(Product.fromJson(jsonDecode(list.last.data)));
+    (list.length == 0 || list.last.data.length < 5) ? print('nothing to upload') :  createItem(Product.fromJson(jsonDecode(list.last.data)));
+    list.length > 50 ? list.clear() : print('list growing'); //prevent too many element stored in the list
 
     return DefaultTabController(
       length: 2,
@@ -349,7 +350,7 @@ class _FirstScreen extends State<testNotificationScreen> {
                             ),
                             Container(
                               margin: EdgeInsets.only(top:20.0),
-                              child:Text(list.length == 0 ? 'Please' : Product.fromJson(jsonDecode(list.last.data)).heartrate,
+                              child:Text(list.length == 0 || list.last.data.length < 5 ? 'Please' : Product.fromJson(jsonDecode(list.last.data)).heartrate,
                                   style: TextStyle(
                                   fontSize: 40.0,
                                   fontWeight: FontWeight.bold,
@@ -388,7 +389,7 @@ class _FirstScreen extends State<testNotificationScreen> {
                             ),
                             Container(
                               margin: EdgeInsets.only(top:20.0),
-                              child:Text(list.length == 0 ? 'connect' : Product.fromJson(jsonDecode(list.last.data)).temperature,
+                              child:Text(list.length == 0 || list.last.data.length < 5 ? 'connect' : Product.fromJson(jsonDecode(list.last.data)).temperature,
                                   style: TextStyle(
                                   fontSize: 40.0,
                                   fontWeight: FontWeight.bold,
@@ -426,7 +427,7 @@ class _FirstScreen extends State<testNotificationScreen> {
                             ),
                             Container(
                               margin: EdgeInsets.only(top:20.0),
-                              child:Text(list.length == 0 ? 'the' : Product.fromJson(jsonDecode(list.last.data)).movement,
+                              child:Text(list.length == 0 || list.last.data.length < 5 ? 'the' : Product.fromJson(jsonDecode(list.last.data)).movement,
                                   style: TextStyle(
                                   fontSize: 40.0,
                                   fontWeight: FontWeight.bold,
@@ -454,7 +455,7 @@ class _FirstScreen extends State<testNotificationScreen> {
                             ),
                             Container(
                               margin: EdgeInsets.only(top:20.0),
-                              child:Text(list.length == 0 ? 'Mask' : Product.fromJson(jsonDecode(list.last.data)).oxygenconc,
+                              child:Text(list.length == 0 || list.last.data.length < 5 ? 'Mask' : Product.fromJson(jsonDecode(list.last.data)).oxygenconc,
                                   style: TextStyle(
                                   fontSize: 40.0,
                                   fontWeight: FontWeight.bold,
@@ -554,7 +555,7 @@ class _FirstScreen extends State<testNotificationScreen> {
                       Padding(
                         padding: const EdgeInsets.only(top: 20),
                         child: Text(
-                          "PAIRED DEVICES",
+                          "DEVICES",
                           style: TextStyle(fontSize: 24, color: Colors.blue),
                           textAlign: TextAlign.center,
                         ),
@@ -650,7 +651,7 @@ class _FirstScreen extends State<testNotificationScreen> {
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: <Widget>[
                         Text(
-                          "NOTE: If you cannot find the device in the list, please pair the device by going to the bluetooth settings",
+                          "In case if you cannot find the device in the list, please pair the device by going to the bluetooth settings",
                           style: TextStyle(
                             fontSize: 15,
                             fontWeight: FontWeight.bold,
