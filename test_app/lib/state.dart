@@ -553,7 +553,7 @@ class _FirstScreen extends State<testNotificationScreen> {
                   Column(
                     children: <Widget>[
                       Padding(
-                        padding: const EdgeInsets.only(top: 20),
+                        padding: const EdgeInsets.only(top: 0),
                         child: Text(
                           "DEVICES",
                           style: TextStyle(fontSize: 24, color: Colors.blue),
@@ -588,7 +588,7 @@ class _FirstScreen extends State<testNotificationScreen> {
                         ),
                       ),
                       Padding(
-                        padding: const EdgeInsets.all(16.0),
+                        padding: const EdgeInsets.all(10.0),
                         child: Card(
                           shape: RoundedRectangleBorder(
                             side: new BorderSide(
@@ -650,15 +650,8 @@ class _FirstScreen extends State<testNotificationScreen> {
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: <Widget>[
-                        Text(
-                          "In case if you cannot find the device in the list, please pair the device by going to the bluetooth settings",
-                          style: TextStyle(
-                            fontSize: 15,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.red,
-                          ),
-                        ),
-                        SizedBox(height: 15),
+                        Image.asset('assets/wordtree.png'),
+                        //SizedBox(height: 10),
                         RaisedButton(
                           elevation: 2,
                           child: Text("Bluetooth Settings"),
