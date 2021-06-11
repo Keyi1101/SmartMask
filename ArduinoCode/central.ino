@@ -39,6 +39,8 @@
 #include <EnergySaving.h>
 #include <TimerTCC0.h>
 
+//#include <pgmspace.h>
+
 
 //you need to download the following libraries.
 #include "RTCZero.h" //this is the build_in HW real time clock, but it do not have a time stamp
@@ -75,7 +77,14 @@ char NAME_OF_MASK[MAX_NAME_LENGTH]="Smart Mask";
 #define SLEEP_TIME_uS 1000000
 #define IN_DEBUGING 1 //1 to prevent the seeduino from sleeping
 
-
+#define Env_Temp_Coe 10
+#define Resp_Temp_Coe 90
+#define Ear_Temp_Coe 10
+#define Diff_Coe 2
+uint8_t Oral_Temp=60; //30+(x/10)
+uint16_t Ear_Temp;
+uint16_t Peak_Temp;
+uint16_t Env_Temp;
 
 #define Data_Set_Length_Max 1000
 #if defined(__AVR_ATmega328P__) || defined(__AVR_ATmega168__)
@@ -125,6 +134,8 @@ uint32_t redBuffer[200];  //red LED sensor data
 #define MCP9808_REG_DEVICE_ID 0x07    ///< device ID
 #define MCP9808_REG_RESOLUTION 0x08   ///< resolutin
 
+
+
 uint32_t irCurrent;
 uint32_t redCurrent;
 uint8_t spoiRead=0;
@@ -160,12 +171,12 @@ uint8_t NextSecond=0; //the alarm will take place when time change to the next s
 
 
 struct Data_Set{
-  uint32_t Second_Stamp_S;
-  uint8_t Heart_Rate_S;
-  uint8_t SPO2_S;
-  uint8_t MOTION_LEVEL_S; 
-  uint8_t TEMP_S;          //30+TEMP_S/10
-  uint8_t Resp_Rate_S;
+   uint32_t Second_Stamp_S;
+   uint8_t Heart_Rate_S;
+   uint8_t SPO2_S;
+   uint8_t MOTION_LEVEL_S; 
+   uint8_t TEMP_S;          //30+TEMP_S/10
+   uint8_t Resp_Rate_S;
 
   
 };
@@ -180,12 +191,13 @@ uint32_t PPG_IR;
 uint16_t BLE_Data_Read_RC=0;
 uint16_t BLE_Data_Write_RC=0;
 
-#define PPG_List_Length 996
+#define PPG_List_Length 992
 struct PPG_List{
  uint32_t Second_Stamp; //start
  PPG_Set PPG_Sig[PPG_List_Length];
 };
 bool BLE_LAST_STAT=0;
+
 Data_Set Normal_Mode_Data[Data_Set_Length_Max];
 PPG_List  PPG_List_Ins;
 
@@ -715,13 +727,27 @@ void loop()
           
          }
 
+        
+         Peak_Temp=peak_temp;
          if(second_peak_index>first_peak_index)
-         { Resp_Rate_Buff=1500/(second_peak_index-first_peak_index);}//this is 2x resp rate.
+         { Resp_Rate_Buff=1500/(second_peak_index-first_peak_index);
+           
+         }//this is 2x resp rate.
          else
-         {Resp_Rate_Buff=0;}
-    
-   
+         {Resp_Rate_Buff=0;
+          if(first_peak_index==0)
+          {
+            Peak_Temp=Resp_Temp[0];
+          }
          
+         }
+         
+    
+          //estimate core temp
+     
+          //Oral_Temp=((int32_t)(Resp_Temp_Coe*(int32_t)(((int16_t)(Peak_Temp-15888)>>2)+11912)/24.8242424)+(int32_t)(Ear_Temp_Coe*(Ear_Temp+2440)/5.0)+Env_Temp_Coe*(int32_t)(400-Env_Temp)-48000)/160; //this give 0 at 25 degree
+                                               //coe=1600                   //coe=1600
+         Oral_Temp=(Diff_Coe*(int32_t)((float)((int16_t)(Peak_Temp-15888))/24.8242424)-(Diff_Coe-1)*Env_Temp-480)*10/16;
 
          
           for (byte i = 25; i < 200; i++)
@@ -753,7 +779,11 @@ void loop()
            {
              temp_a-=4096;
            }
+          Env_Temp=temp_a;
        }
+
+
+      
         
         
         
@@ -768,6 +798,7 @@ void loop()
            {
              temp_b-=4096;
            }
+           Ear_Temp=temp_b;
        }
         
         
@@ -831,7 +862,7 @@ void loop()
 
         //fake data
           Normal_Mode_Data[BLE_Data_Read_RC].MOTION_LEVEL_S=3; //will be classified later by ACCELERO
-          Normal_Mode_Data[BLE_Data_Read_RC].TEMP_S=63;  //will be calculate from three other temp
+      //    Normal_Mode_Data[BLE_Data_Read_RC].TEMP_S=63;  //will be calculate from three other temp
          // Normal_Mode_Data[BLE_Data_Read_RC].Resp_Rate_S=25;  //will be calculated from HDC1080 data
           
 
@@ -902,6 +933,7 @@ void loop()
            Normal_Mode_Data[BLE_Data_Write_RC].Second_Stamp_S=My_Time.Get_Stamp();
            Normal_Mode_Data[BLE_Data_Write_RC].SPO2_S=spo2;
            Normal_Mode_Data[BLE_Data_Write_RC].Resp_Rate_S=Resp_Rate_Buff;
+           Normal_Mode_Data[BLE_Data_Write_RC].TEMP_S=Oral_Temp;
 
 
            BLE_Data_Write_RC++;
@@ -938,9 +970,18 @@ void loop()
 
       Serial.print(", HRPBA=");
       Serial.print(beatsPerMinute);
-      Serial.print(", Avg BPM=");
-      Serial.print(beatAvg);
+    //  Serial.print(", Avg BPM=");
+    //  Serial.print(beatAvg);
 
+      Serial.print(", TResp=");
+      Serial.print(Peak_Temp/397.187878787-40);
+      Serial.print(", TSkin=");
+      Serial.print(Ear_Temp/16.0);
+      Serial.print(", TEnv=");
+      Serial.print(Env_Temp/16.0);
+
+      Serial.print(", TOral=");
+      Serial.print(Oral_Temp/10.0+30.0);
    
    /*   Serial.print(F(", HRvalid="));
       Serial.print(validHeartRate, DEC);*/
@@ -1114,7 +1155,7 @@ void loop()
 
         //fake data
           Normal_Mode_Data[BLE_Data_Read_RC].MOTION_LEVEL_S=3; //will be classified later by ACCELERO
-          Normal_Mode_Data[BLE_Data_Read_RC].TEMP_S=63;  //will be calculate from three other temp
+   //       Normal_Mode_Data[BLE_Data_Read_RC].TEMP_S=63;  //will be calculate from three other temp
          // Normal_Mode_Data[BLE_Data_Read_RC].Resp_Rate_S=25;  //will be calculated from HDC1080 data
           
 
@@ -1257,6 +1298,11 @@ struct PPG_List{
         PPG_List_Ins.PPG_Sig[j].PPG_IR=particleSensor.getIR();
         PPG_List_Ins.PPG_Sig[j].PPG_Red=particleSensor.getRed();
     //    delay(2);
+    if(PPG_List_Ins.PPG_Sig[j].PPG_IR<60000)
+    {Stress_Measured=0;//not valid measurment
+      Stress_Refresh_Count=120;//retry in 2 munites
+      PPG_List_Sent=1;//nothing to sent
+      break;}//stop
         ACCEL_READ_COUNT++;
         TEMP_COUNT++;
         if(TEMP_COUNT==6) //do not use 1,3,5
