@@ -1299,9 +1299,9 @@ struct PPG_List{
         PPG_List_Ins.PPG_Sig[j].PPG_Red=particleSensor.getRed();
     //    delay(2);
     if(PPG_List_Ins.PPG_Sig[j].PPG_IR<60000)
-    {Stress_Measured=0;//not valid measurment
+    {Stress_Measured=1;//not valid measurment
       Stress_Refresh_Count=120;//retry in 2 munites
-      PPG_List_Sent=1;//nothing to sent
+      PPG_List_Sent=1;//not valid measurment, nothing to sent
       break;}//stop
         ACCEL_READ_COUNT++;
         TEMP_COUNT++;
