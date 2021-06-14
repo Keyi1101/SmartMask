@@ -169,12 +169,11 @@ uint16_t Stress_Refresh_Count=3599;
 uint8_t NextSecond=0; //the alarm will take place when time change to the next second.
 
 
-
 struct Data_Set{
    uint32_t Second_Stamp_S;
    uint8_t Heart_Rate_S;
    uint8_t SPO2_S;
-   uint8_t MOTION_LEVEL_S; 
+   uint16_t MOTION_LEVEL_S; 
    uint8_t TEMP_S;          //30+TEMP_S/10
    uint8_t Resp_Rate_S;
 
@@ -235,6 +234,19 @@ uint16_t Resp_Temp[200];
 uint8_t Resp_Temp_Count=0;
 uint8_t Resp_Rate_Buff=0;
 uint16_t peak_temp=0;
+
+uint8_t MOT_PEAK_X=0;
+uint8_t MOT_PEAK_Y=0;
+uint8_t MOT_PEAK_Z=0;
+int16_t MOT_MEAN_X=0;
+int16_t MOT_MEAN_Y=0;
+int16_t MOT_MEAN_Z=0;
+
+uint8_t MOT_COUNT=0;
+
+uint16_t MOT_LEVEL=0;
+
+bool CLEAN_MOT_INTI=0;
 
 
 bool Freeze_m=0; //shut down to power save at low power
@@ -592,25 +604,63 @@ void loop()
      }
  
   // Convert the data to 12-bits
-      int xAccl = ((ACCEL[1] <<8) + ACCEL[2]) >> 4;
-      if (xAccl > 2047)
-      {
-        xAccl -= 4096;
-      }
+      int8_t xAccl = ACCEL[1] ;
+
  
-      int yAccl = ((ACCEL[3] << 8) + ACCEL[4]) >> 4;
-      if (yAccl > 2047)
-      {
-        yAccl -= 4096;
-      }
+      int8_t yAccl = ACCEL[3]; 
+
  
-      int zAccl = ((ACCEL[5] << 8) + ACCEL[6]) >> 4;
-      if (zAccl > 2047)
-      {
-        zAccl -= 4096;
-      }
+      int8_t zAccl =ACCEL[5];
+    
  
        // Output data to serial monitor
+
+      
+      if(CLEAN_MOT_INTI)
+      {
+        if(MOT_COUNT!=0)
+       {
+        MOT_MEAN_X=MOT_MEAN_X/MOT_COUNT;
+        MOT_MEAN_Y=MOT_MEAN_Y/MOT_COUNT;
+        MOT_MEAN_Z=MOT_MEAN_Z/MOT_COUNT;
+        MOT_LEVEL=(MOT_PEAK_X-MOT_MEAN_X)*(MOT_PEAK_X-MOT_MEAN_X)+(MOT_PEAK_Y-MOT_MEAN_Y)*(MOT_PEAK_Y-MOT_MEAN_Y)+(MOT_PEAK_Z-MOT_MEAN_Z)*(MOT_PEAK_Z-MOT_MEAN_Z);
+   //     Serial.print("MOT_LEVEL: ");
+   //     Serial.println(MOT_LEVEL);
+        
+       }
+
+
+
+       MOT_PEAK_X=0;
+       MOT_PEAK_Y=0;
+       MOT_PEAK_Z=0;
+       MOT_MEAN_X=0;
+       MOT_MEAN_Y=0;
+       MOT_MEAN_Z=0;
+       MOT_COUNT=0;
+       CLEAN_MOT_INTI=0;
+      }
+      else
+      {
+       
+       MOT_MEAN_X+=xAccl;
+       MOT_MEAN_Y+=yAccl;
+       MOT_MEAN_Z+=zAccl;
+      if(MOT_PEAK_X<xAccl)
+       {MOT_PEAK_X=xAccl;}
+      else if(MOT_PEAK_X<-xAccl)
+       {MOT_PEAK_X=-xAccl;}
+      if(MOT_PEAK_Y<yAccl)
+       {MOT_PEAK_Y=yAccl;}
+      else if(MOT_PEAK_Y<-yAccl)
+       {MOT_PEAK_Y=-yAccl;}
+      if(MOT_PEAK_Z<zAccl)
+       {MOT_PEAK_Z=zAccl;}
+      else if(MOT_PEAK_Z<-zAccl)
+       {MOT_PEAK_Z=-zAccl;}
+    
+       MOT_COUNT++; 
+      }
 
 
         
@@ -747,7 +797,7 @@ void loop()
      
           //Oral_Temp=((int32_t)(Resp_Temp_Coe*(int32_t)(((int16_t)(Peak_Temp-15888)>>2)+11912)/24.8242424)+(int32_t)(Ear_Temp_Coe*(Ear_Temp+2440)/5.0)+Env_Temp_Coe*(int32_t)(400-Env_Temp)-48000)/160; //this give 0 at 25 degree
                                                //coe=1600                   //coe=1600
-         Oral_Temp=(Diff_Coe*(int32_t)((float)((int16_t)(Peak_Temp-15888))/24.8242424)-(Diff_Coe-1)*Env_Temp-480)*10/16;
+         Oral_Temp=(Diff_Coe*(int32_t)((float)((int16_t)(Peak_Temp-15888))/24.8242424)-(Diff_Coe-1)*(int32_t)Env_Temp-480)*10/16;
 
          
           for (byte i = 25; i < 200; i++)
@@ -828,6 +878,10 @@ void loop()
  
      // maxim_heart_rate_and_oxygen_saturation(irBuffer, bufferLength, redBuffer, &spo2, &validSPO2, &heartRate, &validHeartRate);
       rf_heart_rate_and_oxygen_saturation(irBuffer, bufferLength, redBuffer, &spo2, &validSPO2, &heartRate, &validHeartRate, &signalRatio, &signalCorel);
+      //XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+
+      //XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+      
       for (byte i = spoiPTR_MAX; i < 200; i++)
       {
        redBuffer[i - spoiPTR_MAX] = redBuffer[i];
@@ -861,7 +915,7 @@ void loop()
           Serial1.print(',');
 
         //fake data
-          Normal_Mode_Data[BLE_Data_Read_RC].MOTION_LEVEL_S=3; //will be classified later by ACCELERO
+      //    Normal_Mode_Data[BLE_Data_Read_RC].MOTION_LEVEL_S=3; //will be classified later by ACCELERO
       //    Normal_Mode_Data[BLE_Data_Read_RC].TEMP_S=63;  //will be calculate from three other temp
          // Normal_Mode_Data[BLE_Data_Read_RC].Resp_Rate_S=25;  //will be calculated from HDC1080 data
           
@@ -934,6 +988,7 @@ void loop()
            Normal_Mode_Data[BLE_Data_Write_RC].SPO2_S=spo2;
            Normal_Mode_Data[BLE_Data_Write_RC].Resp_Rate_S=Resp_Rate_Buff;
            Normal_Mode_Data[BLE_Data_Write_RC].TEMP_S=Oral_Temp;
+           Normal_Mode_Data[BLE_Data_Read_RC].MOTION_LEVEL_S=MOT_LEVEL;
 
 
            BLE_Data_Write_RC++;
@@ -1049,6 +1104,9 @@ void loop()
     else
     {
       beatAvg=0;
+      //XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+      //XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+      
     }
   
 /*
@@ -1154,7 +1212,7 @@ void loop()
           Serial1.print(',');
 
         //fake data
-          Normal_Mode_Data[BLE_Data_Read_RC].MOTION_LEVEL_S=3; //will be classified later by ACCELERO
+   //       Normal_Mode_Data[BLE_Data_Read_RC].MOTION_LEVEL_S=3; //will be classified later by ACCELERO
    //       Normal_Mode_Data[BLE_Data_Read_RC].TEMP_S=63;  //will be calculate from three other temp
          // Normal_Mode_Data[BLE_Data_Read_RC].Resp_Rate_S=25;  //will be calculated from HDC1080 data
           
@@ -1608,6 +1666,7 @@ void RTC_Isr()  //the MCU is waked up by RTC,every 1 second
   rtc.setAlarmSeconds(NextSecond);
  // digitalWrite(13, isLEDOn);
  // isLEDOn = !isLEDOn;
+ CLEAN_MOT_INTI=1;
  Stress_Refresh_Count+=1;
  if(Stress_Refresh_Count==3600)
  {
