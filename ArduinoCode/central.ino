@@ -623,7 +623,13 @@ void loop()
         MOT_MEAN_X=MOT_MEAN_X/MOT_COUNT;
         MOT_MEAN_Y=MOT_MEAN_Y/MOT_COUNT;
         MOT_MEAN_Z=MOT_MEAN_Z/MOT_COUNT;
-        MOT_LEVEL=(MOT_PEAK_X-MOT_MEAN_X)*(MOT_PEAK_X-MOT_MEAN_X)+(MOT_PEAK_Y-MOT_MEAN_Y)*(MOT_PEAK_Y-MOT_MEAN_Y)+(MOT_PEAK_Z-MOT_MEAN_Z)*(MOT_PEAK_Z-MOT_MEAN_Z);
+        if(MOT_MEAN_X<0)
+        {MOT_MEAN_X=-MOT_MEAN_X;}
+        if(MOT_MEAN_Y<0)
+        {MOT_MEAN_Y=-MOT_MEAN_Y;}
+        if(MOT_MEAN_Z<0)
+        {MOT_MEAN_Z=-MOT_MEAN_Z;}
+         MOT_LEVEL=(MOT_PEAK_X-MOT_MEAN_X)*(MOT_PEAK_X-MOT_MEAN_X)+(MOT_PEAK_Y-MOT_MEAN_Y)*(MOT_PEAK_Y-MOT_MEAN_Y)+(MOT_PEAK_Z-MOT_MEAN_Z)*(MOT_PEAK_Z-MOT_MEAN_Z);
    //     Serial.print("MOT_LEVEL: ");
    //     Serial.println(MOT_LEVEL);
         
@@ -1356,11 +1362,12 @@ struct PPG_List{
         PPG_List_Ins.PPG_Sig[j].PPG_IR=particleSensor.getIR();
         PPG_List_Ins.PPG_Sig[j].PPG_Red=particleSensor.getRed();
     //    delay(2);
-    if(PPG_List_Ins.PPG_Sig[j].PPG_IR<60000)
+    if(PPG_List_Ins.PPG_Sig[j].PPG_IR<20000)
     {Stress_Measured=1;//not valid measurment
       Stress_Refresh_Count=120;//retry in 2 munites
       PPG_List_Sent=1;//not valid measurment, nothing to sent
-      break;}//stop
+      break;
+    }//stop       
         ACCEL_READ_COUNT++;
         TEMP_COUNT++;
         if(TEMP_COUNT==6) //do not use 1,3,5
@@ -1426,8 +1433,7 @@ struct PPG_List{
              
     
               }
-         
-        
+
               
             
          
@@ -1436,8 +1442,10 @@ struct PPG_List{
       
         
         if(ACCEL_READ_COUNT==2)
-        {ACCEL_READ_COUNT=0;
+        {
+          
           Wire.requestFrom(MMA8452Q_Addr, 7);
+          ACCEL_READ_COUNT=0;
  
         // Read 7 bytes of data
         // staus, xAccl lsb, xAccl msb, yAccl lsb, yAccl msb, zAccl lsb, zAccl msb
@@ -1468,97 +1476,218 @@ struct PPG_List{
     if(Mask_Mode==1 && Stress_Measured==1 && !PPG_List_Sent && digitalRead(3))
     {  if(digitalRead(BLE_STAT_PIN))
       {   Serial1.print('{');
+
+           Serial1.print('"');
+          Serial1.print("mode");
+          Serial1.print('"');
+          Serial1.print(':');
+          Serial1.print('"');
+          Serial1.print("fast");
+          Serial1.print('"');
+          Serial1.print(',');
+         
          Serial1.print('"');
-          Serial1.print("tim");
+          Serial1.print("time");
           Serial1.print('"');
           Serial1.print(':');
           Serial1.print(PPG_List_Ins.Second_Stamp);
-          Serial1.print("}\r\n");
+          Serial1.print(',');
        //    delay(20   );
   
          PPG_List_Sent=1; 
+
+          Serial1.print('"');
+          Serial1.print("ppgir");
+          Serial1.print('"');
+          Serial1.print(':');
+          Serial1.print('[');
       for (int j=0; j<PPG_List_Length; j++)
-      { Serial1.print('{');
-        
-        /*Serial1.print('"');
-          Serial1.print("Milli");
-          Serial1.print('"');
-          Serial1.print(':');
-          Serial1.print(PPG_List_Ins.PPG_Sig[j].Milli_Stamp);
-          Serial1.print(',');*/
-     //     delay(20);
-
-          Serial1.print('"');
-          Serial1.print("i");
-          Serial1.print('"');
-          Serial1.print(':');
+      { 
           Serial1.print(PPG_List_Ins.PPG_Sig[j].PPG_IR);
-          Serial1.print(',');
+          if(j!=PPG_List_Length-1)
+          {Serial1.print(',');}
 
-          Serial1.print('"');
-          Serial1.print("r");
-          Serial1.print('"');
-          Serial1.print(':');
-          Serial1.print(PPG_List_Ins.PPG_Sig[j].PPG_Red);
-          Serial1.print(',');
-
-          Serial1.print('"');
-          Serial1.print("x");
-          Serial1.print('"');
-          Serial1.print(':');
-          Serial1.print(ACCEL_X_LIST[j>>1]);
-          Serial1.print(',');
-
-          Serial1.print('"');
-          Serial1.print("y");
-          Serial1.print('"');
-          Serial1.print(':');
-          Serial1.print(ACCEL_Y_LIST[j>>1]);
-          Serial1.print(',');
-
-          
-          Serial1.print('"');
-          Serial1.print("z");
-          Serial1.print('"');
-          Serial1.print(':');
-          Serial1.print(ACCEL_Z_LIST[j>>1]);
-           Serial1.print(',');
-
-          Serial1.print('"');
-          Serial1.print("a");
-          Serial1.print('"');
-          Serial1.print(':');
-          Serial1.print(TEMP_A[j/6]);
-          Serial1.print(',');
-
-          Serial1.print('"');
-          Serial1.print("b");
-          Serial1.print('"');
-          Serial1.print(':');
-          Serial1.print(TEMP_B[j/6]);
-          Serial1.print(',');
-
-          Serial1.print('"');
-          Serial1.print("c");
-          Serial1.print('"');
-          Serial1.print(':');
-          Serial1.print(TEMP_C[j/6]);
-        
-     
-
-          
-
-          
-          Serial1.print("}\r\n");
-     //     delay(20);
-
-          
-       if(digitalRead(BLE_STAT_PIN)==0)
+        if(digitalRead(BLE_STAT_PIN)==0)
         { PPG_List_Sent=0; 
           break;
         }
+      }
+          Serial1.print(']');
+          Serial1.println(',');
+
+          Serial1.print('"');
+          Serial1.print("ppgred");
+          Serial1.print('"');
+          Serial1.print(':');
+          Serial1.print('[');
+
+      for (int j=0; j<PPG_List_Length; j++)
+      { 
      
-       }
+          Serial1.print(PPG_List_Ins.PPG_Sig[j].PPG_Red);
+
+          if(j!=PPG_List_Length-1)
+          {Serial1.print(',');}
+
+        if(digitalRead(BLE_STAT_PIN)==0)
+        { PPG_List_Sent=0; 
+          break;
+        }
+      }
+
+          Serial1.print(']');
+          Serial1.println(',');
+
+          
+          Serial1.print('"');
+          Serial1.print("accelx");
+          Serial1.print('"');
+          Serial1.print(':');
+          Serial1.print('[');
+
+
+      for (int j=0; j<(PPG_List_Length>>1); j++)
+      { 
+          Serial1.print(ACCEL_X_LIST[j]);
+
+          if(j!=(PPG_List_Length>>1)-1)
+          {Serial1.print(',');}
+
+        if(digitalRead(BLE_STAT_PIN)==0)
+        { PPG_List_Sent=0; 
+          break;
+        }
+      }
+
+          Serial1.print(']');
+          Serial1.println(',');
+
+          
+          Serial1.print('"');
+          Serial1.print("accely");
+          Serial1.print('"');
+          Serial1.print(':');
+          Serial1.print('[');
+
+
+
+      
+
+      for (int j=0; j<(PPG_List_Length>>1); j++)
+      {    
+          Serial1.print(ACCEL_Y_LIST[j]);
+          if(j!=(PPG_List_Length>>1)-1)
+          {Serial1.print(',');}
+
+        if(digitalRead(BLE_STAT_PIN)==0)
+        { PPG_List_Sent=0; 
+          break;
+        }
+      }
+          Serial1.print(']');
+          Serial1.println(',');
+          
+          Serial1.print('"');
+          Serial1.print("accelz");
+          Serial1.print('"');
+          Serial1.print(':');
+          Serial1.print('[');   
+     for (int j=0; j<(PPG_List_Length>>1); j++)
+      {    
+          Serial1.print(ACCEL_Z_LIST[j]);
+          if(j!=(PPG_List_Length>>1)-1)
+          {Serial1.print(',');}
+
+        if(digitalRead(BLE_STAT_PIN)==0)
+        { PPG_List_Sent=0; 
+          break;
+        }
+      }  
+          Serial1.print(']');
+          Serial1.println(',');
+
+
+          Serial1.print('"');
+          Serial1.print("tresp");
+          Serial1.print('"');
+          Serial1.print(':');
+          Serial1.print('[');   
+     for (int j=0; j<(PPG_List_Length/6); j++)
+      {    
+          Serial1.print(TEMP_A[j]);
+          if(j!=(PPG_List_Length/6)-1)
+          {Serial1.print(',');}
+
+        if(digitalRead(BLE_STAT_PIN)==0)
+        { PPG_List_Sent=0; 
+          break;
+        }
+      }  
+          Serial1.print(']');
+          Serial1.println(',');
+
+
+          Serial1.print('"');
+          Serial1.print("tskin");
+          Serial1.print('"');
+          Serial1.print(':');
+          Serial1.print('[');   
+     for (int j=0; j<(PPG_List_Length/6); j++)
+      {    
+          Serial1.print(TEMP_B[j]);
+          if(j!=(PPG_List_Length/6)-1)
+          {Serial1.print(',');}
+
+        if(digitalRead(BLE_STAT_PIN)==0)
+        { PPG_List_Sent=0; 
+          break;
+        }
+      }  
+          Serial1.print(']');
+          Serial1.println(',');
+
+
+
+          Serial1.print('"');
+          Serial1.print("tenv");
+          Serial1.print('"');
+          Serial1.print(':');
+          Serial1.print('[');   
+     for (int j=0; j<(PPG_List_Length/6); j++)
+      {    
+          Serial1.print(TEMP_C[j]);
+          if(j!=(PPG_List_Length/6)-1)
+          {Serial1.print(',');}
+
+        if(digitalRead(BLE_STAT_PIN)==0)
+        { PPG_List_Sent=0; 
+          break;
+        }
+      }  
+          Serial1.println(']');
+          Serial1.println('}');
+
+
+
+          
+
+         
+      
+
+  
+        
+     
+
+          
+
+          
+        
+     //     delay(20);
+
+          
+  
+     
+       
        
       
          

@@ -111,7 +111,7 @@ void rf_heart_rate_and_oxygen_saturation(uint32_t *pun_ir_buffer, int32_t n_ir_b
     n_last_peak_interval=LOWEST_PERIOD;
     *pn_heart_rate = -999; // unable to calculate because signal looks aperiodic
     *pch_hr_valid  = 0;
-    *pn_spo2 =  -999 ; // do not use SPO2 from this corrupt signal
+    *pn_spo2 =  -1 ; // do not use SPO2 from this corrupt signal
     *pch_spo2_valid  = 0; 
     return;
   }
@@ -122,7 +122,7 @@ void rf_heart_rate_and_oxygen_saturation(uint32_t *pun_ir_buffer, int32_t n_ir_b
     *pn_spo2 = (-45.060*xy_ratio + 30.354)*xy_ratio + 94.845;
     *pch_spo2_valid = 1;
   } else {
-    *pn_spo2 =  -999 ; // do not use SPO2 since signal an_ratio is out of range
+    *pn_spo2 =  -1 ; // do not use SPO2 since signal an_ratio is out of range
     *pch_spo2_valid  = 0; 
   }
 }
