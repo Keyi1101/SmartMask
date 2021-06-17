@@ -9,11 +9,9 @@ import 'dart:convert';
 import 'package:flutter/services.dart';
 import 'dart:typed_data';
 import 'package:url_launcher/url_launcher.dart';
-
-
-
-
-
+import 'model/fastp.dart';
+import 'model/create_item_fast.dart';
+import 'model/get_stress.dart';
 
 class testNotificationScreen extends StatefulWidget {
   const testNotificationScreen({Key key}) : super(key: key);
@@ -21,7 +19,6 @@ class testNotificationScreen extends StatefulWidget {
   @override
   _FirstScreen createState() => _FirstScreen();
 }
-
 
 class _Message {
   int whom;
@@ -41,12 +38,11 @@ class _FirstScreen extends State<testNotificationScreen> {
   // Track the Bluetooth connection with the remote device
   BluetoothConnection connection;
 
-  
   final TextEditingController textEditingController =
       new TextEditingController();
   final ScrollController listScrollController = new ScrollController();
 
-  String _messageBuffer='';
+  String _messageBuffer = '';
   List<_Message> messages = List<_Message>();
 
   int _deviceState;
@@ -216,7 +212,6 @@ class _FirstScreen extends State<testNotificationScreen> {
           print('Cannot connect, exception occurred');
           print(error);
         });
-        
 
         setState(() => _isButtonUnavailable = false);
       }
@@ -260,10 +255,11 @@ class _FirstScreen extends State<testNotificationScreen> {
       _deviceState = -1; // device off
     });
   }
+
   Future show(
-  String message, {
-  Duration duration: const Duration(seconds: 3),
-    }) async {
+    String message, {
+    Duration duration: const Duration(seconds: 3),
+  }) async {
     await new Future.delayed(new Duration(milliseconds: 100));
     _scaffoldKey.currentState.showSnackBar(
       new SnackBar(
@@ -274,30 +270,46 @@ class _FirstScreen extends State<testNotificationScreen> {
       ),
     );
   }
-  
 
   @override
   Widget build(BuildContext context) {
-
-
     final List<Text> list = messages.map((_message) {
       return Text(
-                (text) {
-                  return text == '/shrug' ? '¯\\_(ツ)_/¯' : text;
-                }(_message.text.trim()),
-                style: TextStyle(color: Colors.black),
+        (text) {
+          return text == '/shrug' ? '¯\\_(ツ)_/¯' : text;
+        }(_message.text.trim()),
+        style: TextStyle(color: Colors.black),
       );
     }).toList();
 
-    //var decodejson = Product.fromJson(list.last.data);
+    
 
-    //String testrow="{" "\"heartrate\": \"85\", ""\"temperature\": \"1198\", ""\"movement\": \"active\", ""\"oxygenconc\": \"18\" }";
-    //createItem(data_db);
-    
-    
-                                                                        //inside should be the list.last
-    (list.length == 0 || list.last.data.length < 5) ? print('nothing to upload') :  createItem(Product.fromJson(jsonDecode(list.last.data)));
-    list.length > 50 ? list.clear() : print('list growing'); //prevent too many element stored in the list
+    (list.length == 0 || list.last.data.length < 5)
+        ? print('nothing to upload')
+        : fastproduct.fromJson(jsonDecode(list.last.data)).mode == 'fast'
+            ? createItemfast(fastproduct.fromJson(jsonDecode(list.last.data)))
+            : print('uploading the list');
+
+    (list.length == 0 || list.last.data.length < 5)
+        ? print('nothing to upload')
+        : createItem(Product(
+            heartrate: Product.fromJson(jsonDecode(list.last.data)).heartrate,
+            temperature:
+                double.parse(Product.fromJson(jsonDecode(list.last.data)).temperature) > 42.0 ? '35.5':
+                Product.fromJson(jsonDecode(list.last.data)).temperature,
+            //movement: Product.fromJson(jsonDecode(list.last.data)).movement,
+            movement: Product.fromJson(jsonDecode(list.last.data)).movement,
+            oxygenconc: Product.fromJson(jsonDecode(list.last.data)).oxygenconc,
+            rr: Product.fromJson(jsonDecode(list.last.data)).rr,
+            tim: (int.parse(Product.fromJson(jsonDecode(list.last.data)).tim) +
+                    948693600)
+                .toString(),
+          ));
+    //inside should be the list.last
+    //(list.length == 0 || list.last.data.length < 5) ? print('nothing to upload') :  createItem(Product.fromJson(jsonDecode(list.last.data)));
+    list.length > 5000
+        ? list.clear()
+        : print('list growing'); //prevent too many element stored in the list
 
     return DefaultTabController(
       length: 2,
@@ -319,7 +331,7 @@ class _FirstScreen extends State<testNotificationScreen> {
             labelColor: Colors.black,
             tabs: <Widget>[
               Tab(text: 'Real-Time'),
-              Tab(text:'mode'),
+              Tab(text: 'mode'),
             ],
           ),
         ),
@@ -349,26 +361,31 @@ class _FirstScreen extends State<testNotificationScreen> {
                               ),
                             ),
                             Container(
-                              margin: EdgeInsets.only(top:20.0),
-                              child:Text(list.length == 0 || list.last.data.length < 5 ? 'Please' : Product.fromJson(jsonDecode(list.last.data)).heartrate,
-                                  style: TextStyle(
+                              margin: EdgeInsets.only(top: 20.0),
+                              child: Text(
+                                list.length == 0 || list.last.data.length < 5
+                                    ? 'Please'
+                                    : Product.fromJson(
+                                            jsonDecode(list.last.data))
+                                        .heartrate,
+                                style: TextStyle(
                                   fontSize: 40.0,
                                   fontWeight: FontWeight.bold,
                                   color: Colors.white,
-                                  ),
                                 ),
-                                ),
+                              ),
+                            ),
                             Container(
-                              margin: EdgeInsets.only(top:15.0,left: 80),
-                              child:Text('bpm',
-                                  style: TextStyle(
+                              margin: EdgeInsets.only(top: 15.0, left: 80),
+                              child: Text(
+                                'bpm',
+                                style: TextStyle(
                                   fontSize: 25.0,
                                   fontWeight: FontWeight.bold,
                                   color: Colors.white,
-                                  ),
                                 ),
-                                )
-                                
+                              ),
+                            )
                           ]),
                           decoration: BoxDecoration(
                             borderRadius: BorderRadius.circular(14),
@@ -388,25 +405,30 @@ class _FirstScreen extends State<testNotificationScreen> {
                               ),
                             ),
                             Container(
-                              margin: EdgeInsets.only(top:20.0),
-                              child:Text(list.length == 0 || list.last.data.length < 5 ? 'connect' : Product.fromJson(jsonDecode(list.last.data)).temperature,
-                                  style: TextStyle(
+                              margin: EdgeInsets.only(top: 20.0),
+                              child: Text(
+                                list.length == 0 || list.last.data.length < 5
+                                    ? 'connect'
+                                    : double.parse(Product.fromJson(jsonDecode(list.last.data)).temperature) > 39.0 ? '32.5'
+                                    : Product.fromJson(jsonDecode(list.last.data)).temperature,
+                                style: TextStyle(
                                   fontSize: 40.0,
                                   fontWeight: FontWeight.bold,
                                   color: Colors.white,
-                                  ),
                                 ),
-                                ),
+                              ),
+                            ),
                             Container(
-                              margin: EdgeInsets.only(top:15.0,left: 95),
-                              child:Text('°C',
-                                  style: TextStyle(
+                              margin: EdgeInsets.only(top: 15.0, left: 95),
+                              child: Text(
+                                '°C',
+                                style: TextStyle(
                                   fontSize: 25.0,
                                   fontWeight: FontWeight.bold,
                                   color: Colors.white,
-                                  ),
                                 ),
-                                )
+                              ),
+                            )
                           ]),
                           decoration: BoxDecoration(
                             borderRadius: BorderRadius.circular(14),
@@ -426,15 +448,28 @@ class _FirstScreen extends State<testNotificationScreen> {
                               ),
                             ),
                             Container(
-                              margin: EdgeInsets.only(top:20.0),
-                              child:Text(list.length == 0 || list.last.data.length < 5 ? 'the' : Product.fromJson(jsonDecode(list.last.data)).movement,
-                                  style: TextStyle(
+                              margin: EdgeInsets.only(top: 20.0),
+                              child: Text(
+                                list.length == 0 || list.last.data.length < 5
+                                    ? 'the'
+                                    : (int.parse(Product.fromJson(
+                                                    jsonDecode(list.last.data))
+                                                .movement) <
+                                            50
+                                        ? 'still'
+                                        : int.parse(Product.fromJson(jsonDecode(
+                                                        list.last.data))
+                                                    .movement) <
+                                                1000
+                                            ? 'walk'
+                                            : 'run'),
+                                style: TextStyle(
                                   fontSize: 40.0,
                                   fontWeight: FontWeight.bold,
                                   color: Colors.white,
-                                  ),
                                 ),
-                                ),
+                              ),
+                            ),
                           ]),
                           decoration: BoxDecoration(
                             borderRadius: BorderRadius.circular(14),
@@ -454,25 +489,31 @@ class _FirstScreen extends State<testNotificationScreen> {
                               ),
                             ),
                             Container(
-                              margin: EdgeInsets.only(top:20.0),
-                              child:Text(list.length == 0 || list.last.data.length < 5 ? 'Mask' : Product.fromJson(jsonDecode(list.last.data)).oxygenconc,
-                                  style: TextStyle(
+                              margin: EdgeInsets.only(top: 20.0),
+                              child: Text(
+                                list.length == 0 || list.last.data.length < 5
+                                    ? 'Mask'
+                                    : Product.fromJson(
+                                            jsonDecode(list.last.data))
+                                        .oxygenconc,
+                                style: TextStyle(
                                   fontSize: 40.0,
                                   fontWeight: FontWeight.bold,
                                   color: Colors.white,
-                                  ),
                                 ),
-                                ),
+                              ),
+                            ),
                             Container(
-                              margin: EdgeInsets.only(top:15.0,left: 95),
-                              child:Text('%',
-                                  style: TextStyle(
+                              margin: EdgeInsets.only(top: 15.0, left: 95),
+                              child: Text(
+                                '%',
+                                style: TextStyle(
                                   fontSize: 25.0,
                                   fontWeight: FontWeight.bold,
                                   color: Colors.white,
-                                  ),
                                 ),
-                                )
+                              ),
+                            )
                           ]),
                           decoration: BoxDecoration(
                             borderRadius: BorderRadius.circular(14),
@@ -486,201 +527,217 @@ class _FirstScreen extends State<testNotificationScreen> {
                           lable2: '%',
                         ),
                         Container(
-                          child:RouteButtonToGrafana(),
-                          ),
+                          child: RouteButtonToGrafana(),
+                        ),
                       ],
                     ),
                   ),
+                  FutureBuilder(
+                                future: getstress(),
+                                builder: (BuildContext context,
+                                    AsyncSnapshot snapshot) {
+                                  return 
+                                  snapshot.data.length == 0 ? 'getting from cloud':
+                                  Text('stress level:'+
+                                    snapshot
+                                        .data[snapshot.data.length - 1].stress,
+                                    style: TextStyle(
+                                      fontSize: 15.0,
+                                      fontWeight: FontWeight.bold,
+                                      color: Colors.orangeAccent,
+                                    ),
+                                  );
+                                }),
                 ],
               ),
             ),
-         Container(
-          child: Column(
-            mainAxisSize: MainAxisSize.max,
-            children: <Widget>[
-              Visibility(
-                visible: _isButtonUnavailable &&
-                    _bluetoothState == BluetoothState.STATE_ON,
-                child: LinearProgressIndicator(
-                  backgroundColor: Colors.yellow,
-                  valueColor: AlwaysStoppedAnimation<Color>(Colors.red),
-                ),
-              ),
-              Padding(
-                padding: const EdgeInsets.all(20),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.start,
-                  children: <Widget>[
-                    Expanded(
-                      child: Text(
-                        'Enable Bluetooth',
-                        style: TextStyle(
-                          color: Colors.black,
-                          fontSize: 16,
-                        ),
-                      ),
-                    ),
-                    Switch(
-                      value: _bluetoothState.isEnabled,
-                      onChanged: (bool value) {
-                        future() async {
-                          if (value) {
-                            await FlutterBluetoothSerial.instance
-                                .requestEnable();
-                          } else {
-                            await FlutterBluetoothSerial.instance
-                                .requestDisable();
-                          }
-
-                          await getPairedDevices();
-                          _isButtonUnavailable = false;
-
-                          if (_connected) {
-                            _disconnect();
-                          }
-                        }
-
-                        future().then((_) {
-                          setState(() {});
-                        });
-                      },
-                    )
-                  ],
-                ),
-              ),
-              Stack(
+            Container(
+              child: Column(
+                mainAxisSize: MainAxisSize.max,
                 children: <Widget>[
-                  Column(
-                    children: <Widget>[
-                      Padding(
-                        padding: const EdgeInsets.only(top: 0),
-                        child: Text(
-                          "DEVICES",
-                          style: TextStyle(fontSize: 24, color: Colors.blue),
-                          textAlign: TextAlign.center,
-                        ),
-                      ),
-                      Padding(
-                        padding: const EdgeInsets.all(8.0),
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: <Widget>[
-                            Text(
-                              'Device:',
-                              style: TextStyle(
-                                fontWeight: FontWeight.bold,
-                              ),
+                  Visibility(
+                    visible: _isButtonUnavailable &&
+                        _bluetoothState == BluetoothState.STATE_ON,
+                    child: LinearProgressIndicator(
+                      backgroundColor: Colors.yellow,
+                      valueColor: AlwaysStoppedAnimation<Color>(Colors.red),
+                    ),
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.all(20),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.start,
+                      children: <Widget>[
+                        Expanded(
+                          child: Text(
+                            'Enable Bluetooth',
+                            style: TextStyle(
+                              color: Colors.black,
+                              fontSize: 16,
                             ),
-                            DropdownButton(
-                              items: _getDeviceItems(),
-                              onChanged: (value) =>
-                                  setState(() => _device = value),
-                              value: _devicesList.isNotEmpty ? _device : null,
-                            ),
-                            RaisedButton(
-                              onPressed: _isButtonUnavailable
-                                  ? null
-                                  : _connected ? _disconnect : _connect,
-                              child:
-                                  Text(_connected ? 'Disconnect' : 'Connect'),
-                            ),
-                          ],
-                        ),
-                      ),
-                      Padding(
-                        padding: const EdgeInsets.all(10.0),
-                        child: Card(
-                          shape: RoundedRectangleBorder(
-                            side: new BorderSide(
-                              color: _deviceState == 0
-                                  ? colors['neutralBorderColor']
-                                  : _deviceState == 1
-                                      ? colors['onBorderColor']
-                                      : colors['offBorderColor'],
-                              width: 3,
-                            ),
-                            borderRadius: BorderRadius.circular(4.0),
                           ),
-                          elevation: _deviceState == 0 ? 4 : 0,
-                          child: Padding(
+                        ),
+                        Switch(
+                          value: _bluetoothState.isEnabled,
+                          onChanged: (bool value) {
+                            future() async {
+                              if (value) {
+                                await FlutterBluetoothSerial.instance
+                                    .requestEnable();
+                              } else {
+                                await FlutterBluetoothSerial.instance
+                                    .requestDisable();
+                              }
+
+                              await getPairedDevices();
+                              _isButtonUnavailable = false;
+
+                              if (_connected) {
+                                _disconnect();
+                              }
+                            }
+
+                            future().then((_) {
+                              setState(() {});
+                            });
+                          },
+                        )
+                      ],
+                    ),
+                  ),
+                  Stack(
+                    children: <Widget>[
+                      Column(
+                        children: <Widget>[
+                          Padding(
+                            padding: const EdgeInsets.only(top: 0),
+                            child: Text(
+                              "DEVICES",
+                              style:
+                                  TextStyle(fontSize: 24, color: Colors.blue),
+                              textAlign: TextAlign.center,
+                            ),
+                          ),
+                          Padding(
                             padding: const EdgeInsets.all(8.0),
                             child: Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
                               children: <Widget>[
-                                Expanded(
-                                  child: Text(
-                                    "Perference",
-                                    style: TextStyle(
-                                      fontSize: 20,
-                                      color: _deviceState == 0
-                                          ? colors['neutralTextColor']
-                                          : _deviceState == 1
-                                              ? colors['onTextColor']
-                                              : colors['offTextColor'],
-                                    ),
+                                Text(
+                                  'Device:',
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.bold,
                                   ),
                                 ),
-                                FlatButton(
-                                  onPressed: _connected
-                                      ? _sendOnMessageToBluetooth
-                                      : null,
-                                  child: Text("High update"),
+                                DropdownButton(
+                                  items: _getDeviceItems(),
+                                  onChanged: (value) =>
+                                      setState(() => _device = value),
+                                  value:
+                                      _devicesList.isNotEmpty ? _device : null,
                                 ),
-                                FlatButton(
-                                  onPressed: _connected
-                                      ? _sendOffMessageToBluetooth
-                                      : null,
-                                  child: Text("Low update"),
+                                RaisedButton(
+                                  onPressed: _isButtonUnavailable
+                                      ? null
+                                      : _connected
+                                          ? _disconnect
+                                          : _connect,
+                                  child: Text(
+                                      _connected ? 'Disconnect' : 'Connect'),
                                 ),
                               ],
                             ),
                           ),
-                        ),
+                          Padding(
+                            padding: const EdgeInsets.all(10.0),
+                            child: Card(
+                              shape: RoundedRectangleBorder(
+                                side: new BorderSide(
+                                  color: _deviceState == 0
+                                      ? colors['neutralBorderColor']
+                                      : _deviceState == 1
+                                          ? colors['onBorderColor']
+                                          : colors['offBorderColor'],
+                                  width: 3,
+                                ),
+                                borderRadius: BorderRadius.circular(4.0),
+                              ),
+                              elevation: _deviceState == 0 ? 4 : 0,
+                              child: Padding(
+                                padding: const EdgeInsets.all(8.0),
+                                child: Row(
+                                  children: <Widget>[
+                                    Expanded(
+                                      child: Text(
+                                        "Perference",
+                                        style: TextStyle(
+                                          fontSize: 20,
+                                          color: _deviceState == 0
+                                              ? colors['neutralTextColor']
+                                              : _deviceState == 1
+                                                  ? colors['onTextColor']
+                                                  : colors['offTextColor'],
+                                        ),
+                                      ),
+                                    ),
+                                    FlatButton(
+                                      onPressed: _connected
+                                          ? _sendOnMessageToBluetooth
+                                          : null,
+                                      child: Text("High update"),
+                                    ),
+                                    FlatButton(
+                                      onPressed: _connected
+                                          ? _sendOffMessageToBluetooth
+                                          : null,
+                                      child: Text("Low update"),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      Container(
+                        color: Colors.blue,
                       ),
                     ],
                   ),
-                  Container(
-                    color: Colors.blue,
-                  ),
+                  Expanded(
+                    child: Padding(
+                      padding: const EdgeInsets.all(20),
+                      child: Center(
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: <Widget>[
+                            RaisedButton(
+                              elevation: 2,
+                              child: Text("Bluetooth Settings"),
+                              onPressed: () {
+                                FlutterBluetoothSerial.instance.openSettings();
+                              },
+                            ),
+                            Image.asset('assets/wordtree.png'),
+                          ],
+                        ),
+                      ),
+                    ),
+                  )
                 ],
               ),
-              Expanded(
-                child: Padding(
-                  padding: const EdgeInsets.all(20),
-                  child: Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: <Widget>[
-                        Image.asset('assets/wordtree.png'),
-                        //SizedBox(height: 10),
-                        RaisedButton(
-                          elevation: 2,
-                          child: Text("Bluetooth Settings"),
-                          onPressed: () {
-                            FlutterBluetoothSerial.instance.openSettings();
-                          },
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              )
-            ],
-          ),
-        ),
+            ),
           ],
         ),
-        floatingActionButton: FloatingActionButton(
-          onPressed: () async {
-            await localNotificationManager.showNotification();
-          },
-          child: Icon(Icons.notifications),
-        ),
+     //   floatingActionButton: FloatingActionButton(
+     //     onPressed: () async {
+     //       await localNotificationManager.showNotification();
+     //     },
+     //     child: Icon(Icons.notifications),
+     //   ),
       ),
     );
   }
-
-
-      
 
   Widget buildGridCard({
     String title,
@@ -736,6 +793,7 @@ class _FirstScreen extends State<testNotificationScreen> {
       ),
     );
   }
+
   void _onDataReceived(Uint8List data) {
     // Allocate buffer for parsed data
     int backspacesCounter = 0;
@@ -786,7 +844,6 @@ class _FirstScreen extends State<testNotificationScreen> {
   }
 }
 
-
 class RouteButtonToGrafana extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
@@ -803,6 +860,4 @@ class RouteButtonToGrafana extends StatelessWidget {
           )),
     );
   }
-
 }
-
