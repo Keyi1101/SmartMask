@@ -1,17 +1,19 @@
 import 'dart:convert';
+import 'package:test_app/model/stress.dart';
+
 import 'product.dart';
 import 'package:http/http.dart' as http;
 
-Future<List<Product>> getProducts() async {
+Future<List<stressview>> getstress() async {
   var url =
-      Uri.parse("https://2pd7jss2q3.execute-api.us-east-1.amazonaws.com/dev/get");
+      Uri.parse("https://4rb2pmbsnh.execute-api.us-east-1.amazonaws.com/dev/get");
   return http.get(url).then((http.Response response) {
     final int statusCode = response.statusCode;
     if (statusCode == 200) {
       final temp = json.decode(response.body);
-      List<Product> data = [];
+      List<stressview> data = [];
       for (var item in temp) {
-        Product temp_product = Product.fromJson(item);
+        stressview temp_product = stressview.fromJson(item);
         data.add(temp_product);
       }
       return data;
