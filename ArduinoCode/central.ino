@@ -136,6 +136,7 @@ uint32_t redBuffer[200];  //red LED sensor data
 
 
 
+
 uint32_t irCurrent;
 uint32_t redCurrent;
 uint8_t spoiRead=0;
@@ -389,7 +390,7 @@ void setup()
   Serial1.begin(115200);
   
 
-  
+  bool Tenv_Erro=0;
 
   /*
 
@@ -752,7 +753,10 @@ void loop()
 
           if(peak_found && Fall_Count==0)
           {peak_found=0;
-           Rise_Count=Last_Rise-Last_Fall;
+          if(Last_Rise>Last_Fall)
+           {Rise_Count=Last_Rise-Last_Fall;}
+           else
+           {Rise_Count=0;}
           }
    
           
@@ -837,6 +841,10 @@ void loop()
            }
           Env_Temp=temp_a;
        }
+       else
+       {
+         Env_Temp=(int16_t)((float)((int16_t)Peak_Temp-15888)/24.8242424)-40;
+       }
 
 
       
@@ -885,7 +893,7 @@ void loop()
      // maxim_heart_rate_and_oxygen_saturation(irBuffer, bufferLength, redBuffer, &spo2, &validSPO2, &heartRate, &validHeartRate);
       rf_heart_rate_and_oxygen_saturation(irBuffer, bufferLength, redBuffer, &spo2, &validSPO2, &heartRate, &validHeartRate, &signalRatio, &signalCorel);
       //XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
-
+  
       //XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
       
       for (byte i = spoiPTR_MAX; i < 200; i++)
@@ -1075,7 +1083,6 @@ void loop()
     lastBeat = millis();
 
     beatsPerMinute = 60 / (delta / 1000.0);
-
  
   } 
 
@@ -1111,6 +1118,7 @@ void loop()
     {
       beatAvg=0;
       //XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+    
       //XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
       
     }
@@ -1354,6 +1362,13 @@ struct PPG_List{
      PPG_List_Ins.Second_Stamp=My_Time.Get_Stamp();
      uint8_t ACCEL_READ_COUNT=1;
 
+      for(int i=0; i<10; i++)
+      {
+        particleSensor.getIR();
+        particleSensor.getRed();
+      }
+      //discard the first 10 samples
+
        Wire.beginTransmission(MCP9808_I2CADDR_B);
        Wire.write(MCP9808_REG_AMBIENT_TEMP);
        Wire.endTransmission(false);
@@ -1364,7 +1379,7 @@ struct PPG_List{
     //    delay(2);
     if(PPG_List_Ins.PPG_Sig[j].PPG_IR<20000)
     {Stress_Measured=1;//not valid measurment
-      Stress_Refresh_Count=120;//retry in 2 munites
+      Stress_Refresh_Count=3480;//retry in 2 munites
       PPG_List_Sent=1;//not valid measurment, nothing to sent
       break;
     }//stop       
@@ -1513,7 +1528,7 @@ struct PPG_List{
         }
       }
           Serial1.print(']');
-          Serial1.println(',');
+          Serial1.print(',');
 
           Serial1.print('"');
           Serial1.print("ppgred");
@@ -1536,7 +1551,7 @@ struct PPG_List{
       }
 
           Serial1.print(']');
-          Serial1.println(',');
+          Serial1.print(',');
 
           
           Serial1.print('"');
@@ -1560,7 +1575,7 @@ struct PPG_List{
       }
 
           Serial1.print(']');
-          Serial1.println(',');
+          Serial1.print(',');
 
           
           Serial1.print('"');
@@ -1585,7 +1600,7 @@ struct PPG_List{
         }
       }
           Serial1.print(']');
-          Serial1.println(',');
+          Serial1.print(',');
           
           Serial1.print('"');
           Serial1.print("accelz");
@@ -1604,7 +1619,7 @@ struct PPG_List{
         }
       }  
           Serial1.print(']');
-          Serial1.println(',');
+          Serial1.print(',');
 
 
           Serial1.print('"');
@@ -1624,7 +1639,7 @@ struct PPG_List{
         }
       }  
           Serial1.print(']');
-          Serial1.println(',');
+          Serial1.print(',');
 
 
           Serial1.print('"');
@@ -1644,7 +1659,7 @@ struct PPG_List{
         }
       }  
           Serial1.print(']');
-          Serial1.println(',');
+          Serial1.print(',');
 
 
 
@@ -1664,7 +1679,7 @@ struct PPG_List{
           break;
         }
       }  
-          Serial1.println(']');
+          Serial1.print(']');
           Serial1.println('}');
 
 
