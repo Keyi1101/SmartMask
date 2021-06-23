@@ -2,7 +2,7 @@
 This is project with MF Technology
 
 
-## Source Folder Annotation
+## Folder Annotation
 ### Node.js
 - three node.js code connecting with three DynamoDB Table
    - aws-node-rest-api-with-dynamodb 
