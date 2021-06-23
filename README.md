@@ -16,10 +16,11 @@ This is project with MF Technology
 - Algorithm
   - Model_deployment
   - Model_training
+  - see more at README in the folder
 
 - Hardware Code
   - ArduinoCode 
-  - More details can be gotten in README of ArduinoCode folder
+  - see more in README of ArduinoCode folder
 
 - Grafana Json Package
   - Intelligent Mask Grafana Dashboard JSON.json
