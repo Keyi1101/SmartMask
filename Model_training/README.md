@@ -1,13 +1,13 @@
 # Model_training
 
-## WESAD.py
+### WESAD.py
 Contains functions for preprocessing the WESAD dataset.
 
-## utils.py
+### utils.py
 Contains utility functions.
 
-## model_definition.py
+### model_definition.py
 Defines the general structure of the Stress Inference model.
 
-## model_selection.py
+### model_selection.py
 Script to perform Cross-validated grid search and prints results.
