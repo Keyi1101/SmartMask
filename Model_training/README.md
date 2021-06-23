@@ -16,7 +16,7 @@
 
 
 ## Stress Detection Model
-## There are short introductions of our algorithm, more details can be read in reports.
+- There are short introductions of our algorithm, more details can be read in reports.
 ### Dataset selection and manipulation
 - The WESAD is an open-sourced dataset with physiological signals and corresponding affective states measured from volunteers. 
 - Table below shows A list of signals used in the training of Stress Inference model.
