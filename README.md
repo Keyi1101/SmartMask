@@ -20,9 +20,8 @@
    - The respiration rate and oral temperature are both derived from exhaled temperature. 
    - The exhaled temperature varies with breathing periodically. Based on this property, respiration rate can be extracted by looking for the inter-peak intervals of the respiration temperature which is measured by HDC1080 thermistor at 12.5Hzs.
    - The following diagram shows a compact flow chart of the finite state machine compressed data peak detection method. 
-
 ![image](https://github.com/Keyi1101/SmartMask/blob/main/picture/hr_temp.png)
-   - More Algorithm Details will show in the reports 
+   - More Algorithm Details will show in the report 
 
 ## Motion 
    - The motion state is mainly used to determine whether the user is at rest, walking, running, or doing other extreme activities. 
