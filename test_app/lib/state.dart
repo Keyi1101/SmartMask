@@ -537,7 +537,7 @@ class _FirstScreen extends State<testNotificationScreen> {
                                 builder: (BuildContext context,
                                     AsyncSnapshot snapshot) {
                                   return 
-                                  snapshot.data.length == 0 ? 'getting from cloud':
+                                  snapshot.data == null ? Text('getting from cloud'):
                                   Text('stress level:'+
                                     snapshot
                                         .data[snapshot.data.length - 1].stress,
