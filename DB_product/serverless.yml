@@ -1,0 +1,44 @@
+service: aws-rest-api-with-dynamodb2
+
+provider:
+  name: aws
+  runtime: nodejs14.x
+
+  iamRoleStatements:
+    - Effect: Allow
+      Action:
+        - dynamodb:Query
+        - dynamodb:Scan
+        - dynamodb:GetItem
+        - dynamodb:PutItem
+        - dynamodb:UpdateItem
+        - dynamodb:DeleteItem
+      Resource: "arn:aws:dynamodb:us-east-1:523613607219:table/Products"
+
+functions:
+  create:
+    handler: todos/create.create
+    events:
+      - http:
+          path: /post
+          method: post
+          cors: true
+
+  list:
+    handler: todos/list.list
+    events:
+      - http:
+          path: /get
+          method: get
+          cors: true
+  
+  get:
+    handler: todos/get.get
+    events:
+      - http:
+          path: /get/{id}
+          method: get
+          cors: true
+    
+
+    
