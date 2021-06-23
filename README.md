@@ -3,27 +3,27 @@ This is project with MF Technology
 
 
 ## Folder Annotation
-### Node.js
-#### aws-node-rest-api-with-dynamodb 
-#### DB_pressure_get
-#### DB_pressure 
+- Node.js 
+ - aws-node-rest-api-with-dynamodb 
+ - DB_pressure_get
+ - DB_pressure 
  
-### Fultter APP
-#### test_app
-- There is a screenshot of our user friendly app we designed.
+- Fultter APP
+ - test_app
+ - There is a screenshot of our user friendly app we designed.
 ![image](https://github.com/Keyi1101/SmartMask/blob/main/picture/app.png)
 
-### Algorithm
-#### Model_deployment
-#### Model_training
+- Algorithm
+ - Model_deployment
+ - Model_training
 
-### Hardware Code
-#### ArduinoCode 
-#### More details can be gotten in README of ArduinoCode folder
+- Hardware Code
+ - ArduinoCode 
+ - More details can be gotten in README of ArduinoCode folder
 
-### Grafana Json Package
-#### Intelligent Mask Grafana Dashboard JSON.json
-- Grafana Dashboard helps users to track their histry data and understand their healthy situations better. 
+- Grafana Json Package
+ - Intelligent Mask Grafana Dashboard JSON.json
+ - Grafana Dashboard helps users to track their histry data and understand their healthy situations better. 
 ![image](https://github.com/Keyi1101/SmartMask/blob/main/picture/grafana.png)
 
 ## Project Detail
