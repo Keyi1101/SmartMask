@@ -1,6 +1,8 @@
 # SmartMask
-This is project with MF Technology
-Video is available at: https://imperiallondon-my.sharepoint.com/personal/kw2618_ic_ac_uk/_layouts/15/onedrive.aspx?id=%2Fpersonal%2Fkw2618%5Fic%5Fac%5Fuk%2FDocuments%2Fmask%2Em4v&parent=%2Fpersonal%2Fkw2618%5Fic%5Fac%5Fuk%2FDocuments
+- Imperial College Third Year Project with MF Technology
+- Supervised by Dr. Ayush Bhandari and Dr. Miguel Hernandez-Silveira 
+- Team Members: Ruiqi Jiang, Keran Zheng ,Jirui Wu , Keyi Wu , Weiqian Ni 
+- Video is available at: https://imperiallondon-my.sharepoint.com/personal/kw2618_ic_ac_uk/_layouts/15/onedrive.aspx?id=%2Fpersonal%2Fkw2618%5Fic%5Fac%5Fuk%2FDocuments%2Fmask%2Em4v&parent=%2Fpersonal%2Fkw2618%5Fic%5Fac%5Fuk%2FDocuments
 
 
 ## Folder Annotation
