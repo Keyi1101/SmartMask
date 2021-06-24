@@ -1,5 +1,6 @@
 # SmartMask
 This is project with MF Technology
+Video is available at: https://imperiallondon-my.sharepoint.com/personal/kw2618_ic_ac_uk/_layouts/15/onedrive.aspx?id=%2Fpersonal%2Fkw2618%5Fic%5Fac%5Fuk%2FDocuments%2Fmask%2Em4v&parent=%2Fpersonal%2Fkw2618%5Fic%5Fac%5Fuk%2FDocuments
 
 
 ## Folder Annotation
@@ -16,7 +17,7 @@ This is project with MF Technology
 - Algorithm
   - Model_deployment
   - Model_training
-  - see more at README in the folder
+  - see more in README of folders
 
 - Hardware Code
   - ArduinoCode 
